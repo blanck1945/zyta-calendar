@@ -43,12 +43,11 @@ export function FilesToolbar({
         multiple={false}
         imagesOnly={false}
         clearable
-        style={{ display: "none" }}
+        tabs="" // 👈 Esto evita que Uploadcare dibuje cualquier botón
+        style={{ display: "none" }} // y por las dudas lo ocultamos igual
         onChange={(fileInfo: any) => {
           if (!fileInfo) return;
-          console.log("UPLOADCARE FILE:", fileInfo);
 
-          // 👉 Limpia el widget para que desaparezca la imagen cargada
           if (widgetApi.current) {
             widgetApi.current.value(null);
           }

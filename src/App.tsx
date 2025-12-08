@@ -158,15 +158,15 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="mb-4 p-4 bg-gray-100 border-b border-gray-200 flex items-center justify-between">
+      <header className="mb-4 p-4 bg-gray-200 border-b border-gray-400 flex items-center justify-between">
         <SafeLink
           to="/"
-          className="text-blue-600 hover:underline text-lg font-semibold"
+          className="text-slate-700 hover:underline text-lg font-semibold"
         >
           Go to Host
         </SafeLink>
-        <h1 className="text-2xl md:text-3xl text-red-500 font-bold underline">
-          {import.meta.env.VITE_APP_NAME}
+        <h1 className="text-2xl md:text-3xl text-slate-700 font-bold underline">
+          Atena
         </h1>
       </header>
 
@@ -187,7 +187,6 @@ function App() {
           </div>
         )}
 
-        {/* Toolbar: ahora recibe el bucket custom + setter */}
         <FilesToolbar
           selectedBucket={selectedBucket}
           customBucket={customBucket}
