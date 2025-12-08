@@ -1,10 +1,6 @@
 // src/components/FilesToolbar.tsx
 import { useRef } from "react";
-import {
-  Widget as UploadcareWidget,
-  // si querés tipar un poco el ref:
-  // type WidgetAPI,
-} from "@uploadcare/react-widget";
+import { Widget as UploadcareWidget } from "@uploadcare/react-widget";
 
 type FilesToolbarProps = {
   selectedBucket: string | null;
@@ -14,8 +10,6 @@ type FilesToolbarProps = {
   onUploadDone: (fileInfo: any) => void;
 };
 
-// ⛑️ Hack de tipos: hacemos que el Widget sea "any"
-// para que pueda usarse como JSX sin que TS se queje
 const WidgetAny = UploadcareWidget as any;
 
 export function FilesToolbar({
@@ -25,7 +19,6 @@ export function FilesToolbar({
   onShare,
   onUploadDone,
 }: FilesToolbarProps) {
-  // useRef<any> para no pelear con los tipos del lib
   const widgetApi = useRef<any>(null);
 
   const openUploadDialog = () => {
@@ -39,13 +32,11 @@ export function FilesToolbar({
       return;
     }
 
-    // Equivalente a window.uploadcare.openDialog()
     widgetApi.current.openDialog();
   };
 
   return (
     <>
-      {/* Widget oculto: sólo lo usamos para la API (openDialog / value / etc.) */}
       <WidgetAny
         publicKey={import.meta.env.VITE_UPLOADCARE_PUBLIC_KEY}
         ref={widgetApi}
@@ -56,13 +47,18 @@ export function FilesToolbar({
         onChange={(fileInfo: any) => {
           if (!fileInfo) return;
           console.log("UPLOADCARE FILE:", fileInfo);
-          // App.tsx decide a qué bucket mandarlo
+
+          // 👉 Limpia el widget para que desaparezca la imagen cargada
+          if (widgetApi.current) {
+            widgetApi.current.value(null);
+          }
+
           onUploadDone(fileInfo);
         }}
       />
 
       <div className="flex items-center justify-between mb-3">
-        {/* Left side text */}
+        {/* Left */}
         <div>
           <h2 className="text-xl font-semibold">
             Archivos{" "}
@@ -77,9 +73,8 @@ export function FilesToolbar({
           </p>
         </div>
 
-        {/* RIGHT SIDE: input + buttons */}
+        {/* Right */}
         <div className="flex items-center gap-2">
-          {/* INPUT PARA NUEVO BUCKET */}
           <input
             type="text"
             placeholder="Nuevo bucket (opcional)"
@@ -88,7 +83,6 @@ export function FilesToolbar({
             onChange={(e) => onChangeCustomBucket(e.target.value)}
           />
 
-          {/* SHARE */}
           <button
             type="button"
             onClick={onShare}
@@ -97,7 +91,6 @@ export function FilesToolbar({
             Share
           </button>
 
-          {/* UPLOAD */}
           <button
             type="button"
             disabled={!selectedBucket && customBucket.trim() === ""}
