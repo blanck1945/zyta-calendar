@@ -1,5 +1,10 @@
 // src/components/FilesToolbar.tsx
-import "@uploadcare/react-widget";
+import { useRef } from "react";
+import {
+  Widget as UploadcareWidget,
+  // si querés tipar un poco el ref:
+  // type WidgetAPI,
+} from "@uploadcare/react-widget";
 
 type FilesToolbarProps = {
   selectedBucket: string | null;
@@ -9,6 +14,10 @@ type FilesToolbarProps = {
   onUploadDone: (fileInfo: any) => void;
 };
 
+// ⛑️ Hack de tipos: hacemos que el Widget sea "any"
+// para que pueda usarse como JSX sin que TS se queje
+const WidgetAny = UploadcareWidget as any;
+
 export function FilesToolbar({
   selectedBucket,
   customBucket,
@@ -16,29 +25,42 @@ export function FilesToolbar({
   onShare,
   onUploadDone,
 }: FilesToolbarProps) {
+  // useRef<any> para no pelear con los tipos del lib
+  const widgetApi = useRef<any>(null);
+
   const openUploadDialog = () => {
     const bucketToUse =
       customBucket.trim() !== "" ? customBucket.trim() : selectedBucket;
 
     if (!bucketToUse) return;
 
-    const dialog = (window as any).uploadcare.openDialog(null, {
-      publicKey: import.meta.env.VITE_UPLOADCARE_PUBLIC_KEY,
-      imagesOnly: false,
-      multiple: false,
-      clearable: true,
-    });
+    if (!widgetApi.current) {
+      console.error("Uploadcare widget API not initialized");
+      return;
+    }
 
-    dialog.done((filePromise: any) => {
-      filePromise.done((fileInfo: any) => {
-        console.log("UPLOADCARE FILE:", fileInfo);
-        onUploadDone(fileInfo); // App.tsx decidirá bucket final
-      });
-    });
+    // Equivalente a window.uploadcare.openDialog()
+    widgetApi.current.openDialog();
   };
 
   return (
     <>
+      {/* Widget oculto: sólo lo usamos para la API (openDialog / value / etc.) */}
+      <WidgetAny
+        publicKey={import.meta.env.VITE_UPLOADCARE_PUBLIC_KEY}
+        ref={widgetApi}
+        multiple={false}
+        imagesOnly={false}
+        clearable
+        style={{ display: "none" }}
+        onChange={(fileInfo: any) => {
+          if (!fileInfo) return;
+          console.log("UPLOADCARE FILE:", fileInfo);
+          // App.tsx decide a qué bucket mandarlo
+          onUploadDone(fileInfo);
+        }}
+      />
+
       <div className="flex items-center justify-between mb-3">
         {/* Left side text */}
         <div>
