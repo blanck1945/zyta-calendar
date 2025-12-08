@@ -9,8 +9,16 @@ import { BucketsSection } from "./components/BucketSection/BucketSection";
 import { FilesToolbar } from "./components/FilesToolbar/FilesToolbar";
 import { FileTable } from "./components/FileTable/FileTable";
 import { FilePreview } from "./components/FilePreview/FilePreivew";
+import { useYourIdAuth } from "./sdk/useYourIDAuth";
 
 function App() {
+  // 1) Usamos el SDK
+  useYourIdAuth({
+    applicationBaseUrl: import.meta.env.VITE_APPLICATION_MICROSERVICE_URL,
+    yourIdLoginUrl: import.meta.env.VITE_YOUR_ID_LOGIN_URL,
+    env: import.meta.env.VITE_ENV, // "dev" | "prod"
+  });
+
   const [buckets, setBuckets] = useState<Bucket[]>([]);
   const [selectedBucket, setSelectedBucket] = useState<string | null>(null);
 
