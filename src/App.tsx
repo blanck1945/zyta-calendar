@@ -14,7 +14,7 @@ import { useYourIdAuth } from "./sdk/useYourIDAuth";
 function App() {
   // 1) Usamos el SDK
   useYourIdAuth({
-    applicationBaseUrl: import.meta.env.VITE_APPLICATION_MICROSERVICE_URL,
+    applicationBaseUrl: import.meta.env.VITE_APPLICATION_URL,
     yourIdLoginUrl: import.meta.env.VITE_YOUR_ID_LOGIN_URL,
     env: import.meta.env.VITE_ENV, // "dev" | "prod"
   });
