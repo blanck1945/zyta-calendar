@@ -43,7 +43,6 @@ export function FilesToolbar({
         multiple={false}
         imagesOnly={false}
         clearable
-        tabs="" // 👈 Esto evita que Uploadcare dibuje cualquier botón
         onChange={(fileInfo: any) => {
           if (!fileInfo) return;
 
@@ -91,7 +90,7 @@ export function FilesToolbar({
 
           <button
             type="button"
-            disabled={!selectedBucket && customBucket.trim() === ""}
+            // disabled={!selectedBucket && customBucket.trim() === ""}
             onClick={openUploadDialog}
             className="px-3 py-1 text-xs md:text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
