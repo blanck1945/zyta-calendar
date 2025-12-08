@@ -34,7 +34,7 @@ function App() {
         setError(null);
 
         const res = await axios.get<Bucket[]>(
-          "http://localhost:3000/uploadcare/buckets"
+          `${import.meta.env.VITE_APPLICATION_URL}/uploadcare/buckets`
         );
 
         setBuckets(res.data);
@@ -65,9 +65,9 @@ function App() {
           bucket: string;
           files: FileItem[];
         }>(
-          `http://localhost:3000/uploadcare/buckets/${encodeURIComponent(
-            selectedBucket
-          )}`
+          `${
+            import.meta.env.VITE_APPLICATION_URL
+          }/uploadcare/buckets/${encodeURIComponent(selectedBucket)}`
         );
 
         setFiles(res.data.files);
@@ -112,14 +112,17 @@ function App() {
 
     try {
       // 1) Asignar bucket en el backend
-      await axios.post("http://localhost:3000/uploadcare/buckets/assign", {
-        uuid: fileInfo.uuid,
-        bucket: bucketName,
-      });
+      await axios.post(
+        `${import.meta.env.VITE_APPLICATION_URL}/uploadcare/buckets/assign`,
+        {
+          uuid: fileInfo.uuid,
+          bucket: bucketName,
+        }
+      );
 
       // 2) Recargar lista de buckets (por si el bucket era nuevo)
       const bucketsRes = await axios.get<Bucket[]>(
-        "http://localhost:3000/uploadcare/buckets"
+        `${import.meta.env.VITE_APPLICATION_URL}/uploadcare/buckets`
       );
       setBuckets(bucketsRes.data);
 
@@ -131,9 +134,9 @@ function App() {
         bucket: string;
         files: FileItem[];
       }>(
-        `http://localhost:3000/uploadcare/buckets/${encodeURIComponent(
-          bucketName
-        )}`
+        `${
+          import.meta.env.VITE_APPLICATION_URL
+        }/uploadcare/buckets/${encodeURIComponent(bucketName)}`
       );
 
       setFiles(filesRes.data.files);
