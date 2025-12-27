@@ -4,16 +4,24 @@ import "./index.css";
 import App from "./App.tsx";
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { RedirectToLanding } from "./components/RedirectToLanding";
 
 const router = createBrowserRouter([
   {
-    path: "/",
+    path: "/:idCalendario",
     element: <App />,
+  },
+  {
+    path: "/",
+    element: <RedirectToLanding />,
   },
 ]);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <ThemeProvider>
+      <RouterProvider router={router} />
+    </ThemeProvider>
   </StrictMode>
 );

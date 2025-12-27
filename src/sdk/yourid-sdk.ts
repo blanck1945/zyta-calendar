@@ -21,8 +21,12 @@ export async function ensureAuthenticated(
   config: YourIdConfig
 ): Promise<YourIdUser> {
   try {
+    // Normalizar URL: eliminar barra final si existe y agregar /user/me
+    const baseUrl = config.applicationBaseUrl.replace(/\/+$/, "");
+    const userMeUrl = `${baseUrl}/user/me`;
+    
     const res = await axios.get<YourIdUser>(
-      `${config.applicationBaseUrl}/user/me`,
+      userMeUrl,
       {
         withCredentials: true,
       }

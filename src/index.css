@@ -1,5 +1,242 @@
 @import "tailwindcss";
 
+/* Variables CSS del sistema de diseño (basadas en globals.css) */
+:root {
+  /* Updated color scheme with medical orange primary color */
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.15 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0 0);
+  --primary: oklch(0.65 0.18 35);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.96 0 0);
+  --secondary-foreground: oklch(0.15 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.5 0 0);
+  --accent: oklch(0.97 0.01 35);
+  --accent-foreground: oklch(0.15 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.92 0 0);
+  --input: oklch(0.92 0 0);
+  --ring: oklch(0.65 0.18 35);
+  --radius: 0.75rem;
+}
+
+/* Theme Kairo - Variables CSS personalizadas */
+/* Los colores se aplican dinámicamente desde ThemeContext */
+@theme {
+  /* Variables del sistema de diseño */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Colores principales - valores por defecto (tema cálido) */
+  --color-primary-50: #fff7ed;
+  --color-primary-100: #ffedd5;
+  --color-primary-200: #fed7aa;
+  --color-primary-300: #fdba74;
+  --color-primary-400: #fb923c;
+  --color-primary-500: #f97316;
+  --color-primary-600: #ea580c;
+  --color-primary-700: #c2410c;
+  --color-primary-800: #9a3412;
+  --color-primary-900: #7c2d12;
+
+  /* Colores secundarios - valores por defecto (tema cálido) */
+  --color-secondary-50: #fef2f2;
+  --color-secondary-100: #fee2e2;
+  --color-secondary-200: #fecaca;
+  --color-secondary-300: #fca5a5;
+  --color-secondary-400: #f87171;
+  --color-secondary-500: #ef4444;
+  --color-secondary-600: #dc2626;
+  --color-secondary-700: #b91c1c;
+  --color-secondary-800: #991b1b;
+  --color-secondary-900: #7f1d1d;
+
+  /* Colores de fondo - valores por defecto (tema cálido) */
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #fff7ed;
+  --color-background-tertiary: #ffedd5;
+
+  /* Colores de estado */
+  --color-success-50: #f0fdf4;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+
+  --color-error-50: #fef2f2;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+}
+
 .uploadcare--widget__button {
   display: none;
+}
+
+/* Estilos globales mejorados */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(
+    --font-body,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif
+  );
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Variables CSS para fuentes (inicializadas con valores por defecto) */
+:root {
+  --font-title: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-subtitle: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-button: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Clase para el fondo dinámico de la aplicación */
+.app-background {
+  background: linear-gradient(
+    to bottom right,
+    var(--color-background-secondary),
+    var(--color-background-primary),
+    var(--color-background-secondary)
+  ) !important;
+}
+
+/* Scrollbar personalizado para el selector de horarios - usa variables del tema */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  /* Para temas oscuros, usar colores más claros */
+  scrollbar-color: var(--color-secondary-400) var(--color-secondary-50);
+}
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  /* Usar secondary-50 que es más claro, o un gris neutro si es muy oscuro */
+  background: var(--color-secondary-50);
+  border-radius: 10px;
+  margin: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  /* Usar secondary para mejor contraste */
+  background: linear-gradient(
+    180deg,
+    var(--color-secondary-500) 0%,
+    var(--color-secondary-600) 100%
+  );
+  border-radius: 10px;
+  border: 2px solid var(--color-secondary-50);
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    var(--color-secondary-600) 0%,
+    var(--color-secondary-700) 100%
+  );
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(
+    180deg,
+    var(--color-secondary-700) 0%,
+    var(--color-secondary-800) 100%
+  );
+}
+
+/* Variantes tipográficas para números en horarios */
+
+/* Default - Sin modificaciones especiales */
+.time-slot-number-default {
+  font-variant-numeric: normal;
+  letter-spacing: 0.025em;
+}
+
+/* Tabular - Números tabulares (mismo ancho) */
+.time-slot-number-tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: 0.025em;
+}
+
+/* Mono - Fuente monospace */
+.time-slot-number-mono {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+/* Rounded - Números redondeados (si la fuente lo soporta) */
+.time-slot-number-rounded {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "ss01";
+  letter-spacing: 0.03em;
+  font-weight: 500;
+}
+
+/* Condensed - Números condensados */
+.time-slot-number-condensed {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.01em;
+  font-stretch: 95%;
+  font-weight: 600;
+}
+
+/* Elegant - Estilo elegante con más espaciado */
+.time-slot-number-elegant {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: 0.08em;
+  font-weight: 400;
+  font-size: 0.9em;
 }

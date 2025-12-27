@@ -13,10 +13,14 @@
     "@tailwindcss/vite": "^4.1.17",
     "@uploadcare/react-widget": "^3.0.0",
     "axios": "^1.13.2",
+    "clsx": "^2.1.1",
     "framer-motion": "^12.23.25",
+    "lucide-react": "^0.562.0",
     "react": "^19.2.0",
+    "react-calendar": "^6.0.0",
     "react-dom": "^19.2.0",
     "react-router": "^7.10.1",
+    "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.17"
   },
   "devDependencies": {
