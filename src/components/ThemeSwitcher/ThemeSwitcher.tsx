@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
-import type { ThemeName, ExtraThemeName } from "../../themes";
+import type { ThemeName } from "../../themes";
 import { THEME_NAMES, EXTRA_THEME_NAMES } from "../../themes";
 import { cn } from "../../utils/cn";
 import type { NumberFontVariant } from "../../utils/numberFontVariants";

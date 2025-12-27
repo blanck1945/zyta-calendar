@@ -14,13 +14,12 @@ import type { CalendarValue } from "./components/KairoCalendar";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
 import { useTheme } from "./contexts/ThemeContext";
 import { useProfessionalId } from "./utils/useProfessionalId";
-import { useCalendarSchedule, type DayOfWeek } from "./hooks/useCalendarSchedule";
+import { useCalendarSchedule, type DayOfWeek, type TimeRange } from "./hooks/useCalendarSchedule";
 import type { ThemeName, ExtraThemeName } from "./themes";
-import { themes, extraThemes } from "./themes";
 import { styleVariants, type StyleVariantName, STYLE_VARIANT_NAMES } from "./utils/styleVariants";
 
 function App() {
-  const { currentTheme, theme, setTheme, setThemeFromCalendar } = useTheme();
+  const { setThemeFromCalendar } = useTheme();
   const professionalId = useProfessionalId();
   const { schedule, loading: scheduleLoading, error: scheduleError } = useCalendarSchedule();
   
@@ -195,19 +194,19 @@ function App() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Mapeo de días de la semana
-    const dayMap: Record<DayOfWeek, number> = {
-      "sun": 0,
-      "mon": 1,
-      "tue": 2,
-      "wed": 3,
-      "thu": 4,
-      "fri": 5,
-      "sat": 6,
-    };
-    
     // Buscar el primer día disponible que tenga horarios
     let firstAvailableDate: Date | null = null;
+    
+    // Mapeo de días de la semana: 0 = domingo, 1 = lunes, etc.
+    const dayMap: Record<number, DayOfWeek> = {
+      0: "sun",
+      1: "mon",
+      2: "tue",
+      3: "wed",
+      4: "thu",
+      5: "fri",
+      6: "sat",
+    };
     
     // Buscar en los próximos 30 días
     for (let i = 0; i < 30; i++) {
@@ -215,7 +214,7 @@ function App() {
       checkDate.setDate(today.getDate() + i);
       
       const dayOfWeek = checkDate.getDay();
-      const dayKey = Object.keys(dayMap).find(key => dayMap[key as DayOfWeek] === dayOfWeek) as DayOfWeek | undefined;
+      const dayKey = dayMap[dayOfWeek];
       
       if (!dayKey) continue;
       
@@ -259,6 +258,7 @@ function App() {
       6: "sat",
     };
     const dayKey = dayMap[dayOfWeek];
+    if (!dayKey) return [];
     
     // Verificar si el día está habilitado
     if (!schedule.enabledDays.includes(dayKey)) {
@@ -274,7 +274,7 @@ function App() {
     // Generar slots basados en los rangos horarios y slotMinutes
     const slots: TimeSlot[] = [];
     
-    dayRanges.forEach((range) => {
+    dayRanges.forEach((range: TimeRange) => {
       const [startHour, startMinute] = range.start.split(":").map(Number);
       const [endHour, endMinute] = range.end.split(":").map(Number);
       

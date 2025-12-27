@@ -25,7 +25,7 @@ const KairoCalendar: React.FC<KairoCalendarProps> = ({
   }, []);
 
   // Mapeo de días de la semana: 0 = domingo, 1 = lunes, etc.
-  const dayMap: Record<number, string> = {
+  const dayMap: Record<number, DayOfWeek> = {
     0: "sun",
     1: "mon",
     2: "tue",
@@ -44,6 +44,7 @@ const KairoCalendar: React.FC<KairoCalendarProps> = ({
     return ({ date }: { date: Date }) => {
       const dayOfWeek = date.getDay();
       const dayKey = dayMap[dayOfWeek];
+      if (!dayKey) return true;
       return !enabledDays.includes(dayKey);
     };
   }, [enabledDays]);

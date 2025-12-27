@@ -1,5 +1,5 @@
 // src/components/steps/KairoStepForm.tsx
-import { FormEvent } from "react";
+import type { FormEvent } from "react";
 import { Button } from "../ui/button";
 
 interface KairoStepFormProps {

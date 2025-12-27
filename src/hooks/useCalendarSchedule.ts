@@ -18,7 +18,13 @@ export interface TimeRange {
  * Horarios por día de la semana
  */
 export interface DaySchedule {
-  [day: DayOfWeek]: TimeRange[];
+  mon?: TimeRange[];
+  tue?: TimeRange[];
+  wed?: TimeRange[];
+  thu?: TimeRange[];
+  fri?: TimeRange[];
+  sat?: TimeRange[];
+  sun?: TimeRange[];
 }
 
 /**
