@@ -1,6 +1,6 @@
 // src/components/steps/KairoStepForm.tsx
 import { useState, type FormEvent } from "react";
-import { Calendar, Clock, User, Mail, MessageSquare, Upload, File, X, Phone, AlertCircle } from "lucide-react";
+import { Calendar, Clock, User, Mail, MessageSquare, Upload, File, X, Phone, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import type { BookingForm } from "../../hooks/useCalendarSchedule";
@@ -17,6 +17,8 @@ interface KairoStepFormProps {
   file: File | null;
 
   bookingForm?: BookingForm;
+  confirmCaseBeforePayment?: boolean;
+  isLoading?: boolean;
 
   onChangeName: (v: string) => void;
   onChangeEmail: (v: string) => void;
@@ -39,6 +41,8 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
   wantsFile,
   file,
   bookingForm,
+  confirmCaseBeforePayment = false,
+  isLoading = false,
   onChangeName,
   onChangeEmail,
   onChangeQuery,
@@ -631,6 +635,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
             variant="outline"
             size="md"
             onClick={onBack}
+            disabled={isLoading}
           >
             Volver
           </Button>
@@ -638,9 +643,16 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
             type="submit"
             variant="default"
             size="md"
-            disabled={!canContinue}
+            disabled={!canContinue || isLoading}
           >
-            Siguiente
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {confirmCaseBeforePayment ? "Enviando solicitud..." : "Cargando..."}
+              </>
+            ) : (
+              confirmCaseBeforePayment ? "Enviar solicitud" : "Siguiente"
+            )}
           </Button>
         </div>
       </form>

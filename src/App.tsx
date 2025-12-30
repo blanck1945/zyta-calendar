@@ -1269,6 +1269,8 @@ function App() {
               wantsFile={wantsFile}
               file={file}
               bookingForm={schedule?.bookingForm}
+              confirmCaseBeforePayment={schedule?.bookingSettings?.confirmCaseBeforePayment}
+              isLoading={createAppointmentMutation.isPending}
               onChangeName={setName}
               onChangeEmail={setEmail}
               onChangeQuery={setQuery}
