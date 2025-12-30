@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useCalendarSlug } from "../utils/useCalendarSlug";
 
 /**
@@ -42,6 +42,13 @@ interface CalendarResponse {
   availability: {
     enabledDays: DayOfWeek[];
     byDay: DaySchedule;
+    dateOverrides?: {
+      [date: string]: {
+        disabled?: boolean;
+        timeRanges?: TimeRange[];
+      };
+    };
+    maxAdvanceBookingMonths?: number;
   };
   payments: {
     enabled: string[];
@@ -54,6 +61,48 @@ interface CalendarResponse {
     calendarTitle: string;
     calendarSubtitle: string;
   };
+  links?: Array<{
+    name: string;
+    value: string;
+    isPublic: boolean;
+  }>;
+  bookingForm?: {
+    fields: {
+      name?: { enabled: boolean; required: boolean };
+      email?: { enabled: boolean; required: boolean };
+      notes?: { enabled: boolean; required: boolean };
+      phone?: { enabled: boolean; required: boolean };
+    };
+    customFields?: Array<{
+      id: string;
+      label: string;
+      type: string;
+      required: boolean;
+      enabled: boolean;
+    }>;
+  };
+  bookingSettings?: {
+    allowCancellation: boolean;
+    requirePaymentBeforeConfirmation: boolean;
+    confirmCaseBeforePayment: boolean;
+    confirmationMinHours?: number;
+    confirmationMaxHours?: number;
+    maxAdvanceBookingMonths?: number;
+  };
+  appointments?: Array<{
+    id: string;
+    calendarId: string;
+    clientName: string;
+    clientEmail: string;
+    clientPhone?: string;
+    startTime: string; // ISO 8601
+    endTime: string; // ISO 8601
+    status: string;
+    paymentMethod: string;
+    notes?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,6 +112,69 @@ interface CalendarResponse {
  * Contiene la configuración completa del calendario: días habilitados, horarios,
  * duración de slots, buffer, zona horaria, textos personalizados y tema de colores.
  */
+export interface CalendarLink {
+  name: string;
+  value: string;
+  isPublic: boolean;
+}
+
+export interface DateOverride {
+  disabled?: boolean;
+  timeRanges?: TimeRange[];
+}
+
+export interface CalendarPayments {
+  enabled: string[];
+  cash?: { note: string };
+  transfer?: { alias: string; cbu: string; note: string };
+  mercadopago?: { link: string; note: string };
+}
+
+export interface BookingFormField {
+  enabled: boolean;
+  required: boolean;
+}
+
+export interface BookingForm {
+  fields: {
+    name?: BookingFormField;
+    email?: BookingFormField;
+    notes?: BookingFormField;
+    phone?: BookingFormField;
+  };
+  customFields?: Array<{
+    id: string;
+    label: string;
+    type: string;
+    required: boolean;
+    enabled: boolean;
+  }>;
+}
+
+export interface BookingSettings {
+  allowCancellation: boolean;
+  requirePaymentBeforeConfirmation: boolean;
+  confirmCaseBeforePayment: boolean;
+  confirmationMinHours?: number;
+  confirmationMaxHours?: number;
+  maxAdvanceBookingMonths?: number;
+}
+
+export interface Appointment {
+  id: string;
+  calendarId: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone?: string;
+  startTime: string; // ISO 8601
+  endTime: string; // ISO 8601
+  status: string;
+  paymentMethod: string;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CalendarSchedule {
   calendarSlug: string;
   enabledDays: DayOfWeek[];
@@ -73,6 +185,13 @@ export interface CalendarSchedule {
   calendarTitle: string;
   calendarSubtitle: string;
   theme: string; // Tema de colores: "violeta", "calido", "metalico", "verde", "rosa"
+  links?: CalendarLink[];
+  dateOverrides?: Record<string, DateOverride>;
+  maxAdvanceBookingMonths?: number;
+  payments?: CalendarPayments;
+  bookingForm?: BookingForm;
+  bookingSettings?: BookingSettings;
+  appointments?: Appointment[];
 }
 
 /**
@@ -89,6 +208,13 @@ function transformCalendarResponse(response: CalendarResponse): CalendarSchedule
     calendarTitle: response.styles.calendarTitle,
     calendarSubtitle: response.styles.calendarSubtitle,
     theme: response.styles.theme,
+    links: response.links?.filter(link => link.isPublic) || [],
+    dateOverrides: response.availability.dateOverrides || {},
+    maxAdvanceBookingMonths: response.availability.maxAdvanceBookingMonths,
+    payments: response.payments,
+    bookingForm: response.bookingForm,
+    bookingSettings: response.bookingSettings,
+    appointments: response.appointments || [],
   };
 }
 
@@ -100,67 +226,66 @@ interface UseCalendarScheduleResult {
 
 /**
  * Hook para obtener la configuración del calendario (días y horarios disponibles)
- * desde el endpoint /calendars/public/:slug
+ * desde el endpoint /calendars/public/:slug usando react-query
  */
 export function useCalendarSchedule(): UseCalendarScheduleResult {
   const calendarSlug = useCalendarSlug();
-  const [schedule, setSchedule] = useState<CalendarSchedule | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!calendarSlug) {
-      console.warn("⚠️ useCalendarSchedule: No se encontró calendarSlug");
-      setLoading(false);
-      setError("No se especificó el calendario");
-      return;
-    }
+  const {
+    data: schedule,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["calendarSchedule", calendarSlug],
+    queryFn: async (): Promise<CalendarSchedule> => {
+      if (!calendarSlug) {
+        throw new Error("No se especificó el calendario");
+      }
 
-    // Verificar que la URL del backend esté configurada
-    const backendUrl = import.meta.env.VITE_BACKEND_URL?.replace(/\/+$/, "") || "";
-    if (!backendUrl) {
-      console.error("❌ useCalendarSchedule: VITE_BACKEND_URL no está configurada en .env");
-      setLoading(false);
-      setError("Error de configuración: VITE_BACKEND_URL no está definida");
-      return;
-    }
+      // Verificar que la URL del backend esté configurada
+      const backendUrl = import.meta.env.VITE_BACKEND_URL?.replace(/\/+$/, "") || "";
+      if (!backendUrl) {
+        throw new Error("Error de configuración: VITE_BACKEND_URL no está definida");
+      }
 
-    setLoading(true);
-    setError(null);
+      const scheduleUrl = `${backendUrl}/calendars/public/${calendarSlug}`;
 
-    const scheduleUrl = `${backendUrl}/calendars/public/${calendarSlug}`;
-
-    console.log("🔍 useCalendarSchedule - Haciendo request:", {
-      calendarSlug,
-      backendUrl,
-      scheduleUrl,
-    });
-
-    fetch(scheduleUrl)
-      .then(async (res) => {
-        if (!res.ok) {
-          if (res.status === 404) {
-            throw new Error("Calendario no encontrado");
-          }
-          const errorData = await res.json().catch(() => ({}));
-          throw new Error(
-            errorData.message || "Error al obtener la configuración del calendario"
-          );
-        }
-        return res.json();
-      })
-      .then((data: CalendarResponse) => {
-        // Transformar la respuesta anidada a estructura plana
-        const transformed = transformCalendarResponse(data);
-        setSchedule(transformed);
-        setLoading(false);
-      })
-      .catch((err: Error) => {
-        setError(err.message);
-        setLoading(false);
+      console.log("🔍 useCalendarSchedule - Haciendo request:", {
+        calendarSlug,
+        backendUrl,
+        scheduleUrl,
       });
-  }, [calendarSlug]);
 
-  return { schedule, loading, error };
+      const res = await fetch(scheduleUrl);
+
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error("Calendario no encontrado");
+        }
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || "Error al obtener la configuración del calendario"
+        );
+      }
+
+      const data: CalendarResponse = await res.json();
+      // Transformar la respuesta anidada a estructura plana
+      return transformCalendarResponse(data);
+    },
+    enabled: !!calendarSlug,
+    retry: (failureCount, error) => {
+      // No reintentar si es un error 404
+      if (error instanceof Error && error.message === "Calendario no encontrado") {
+        return false;
+      }
+      return failureCount < 1;
+    },
+  });
+
+  return {
+    schedule: schedule ?? null,
+    loading,
+    error: queryError ? (queryError instanceof Error ? queryError.message : "Error desconocido") : null,
+  };
 }
 

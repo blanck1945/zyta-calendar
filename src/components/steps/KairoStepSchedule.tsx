@@ -12,6 +12,7 @@ export type TimeSlot = {
   hour: number;
   minute?: number; // Minutos (0-59), opcional para compatibilidad
   label: string;
+  disabled?: boolean; // Si está ocupado o no disponible
 };
 
 export type TimeSlotVariant = "grid" | "list" | "timeline";
@@ -31,6 +32,8 @@ interface KairoStepScheduleProps {
   onContinue: () => void;
   enabledDays?: DayOfWeek[]; // Días habilitados para pasar al calendario
   timeSlotVariant?: TimeSlotVariant; // Variante de visualización de horarios
+  dateOverrides?: Record<string, { disabled?: boolean; timeRanges?: Array<{ start: string; end: string }> }>;
+  maxAdvanceBookingMonths?: number;
 }
 
 // Función helper para formatear hora a AM/PM
@@ -60,6 +63,8 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
   canContinue,
   onContinue,
   enabledDays,
+  dateOverrides,
+  maxAdvanceBookingMonths,
 }) => {
   const hasDateSelected = useMemo(
     () => formattedSelection !== "Ninguna fecha seleccionada",
@@ -157,6 +162,8 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
             value={value}
             onChange={onChangeDate}
             enabledDays={enabledDays}
+            dateOverrides={dateOverrides}
+            maxAdvanceBookingMonths={maxAdvanceBookingMonths}
           />
 
           {/* Fecha seleccionada */}
@@ -253,18 +260,22 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
                     selectedSlotHour === slot.hour &&
                     (selectedSlotMinute === undefined ||
                       selectedSlotMinute === (slot.minute ?? 0));
+                  const isDisabled = slot.disabled || false;
 
                   return (
                     <button
                       key={`${slot.hour}-${slot.minute ?? 0}-${index}`}
                       type="button"
-                      onClick={() => onSelectSlotHour(slot.hour, slot.minute)}
+                      onClick={() => !isDisabled && onSelectSlotHour(slot.hour, slot.minute)}
+                      disabled={isDisabled}
                       className={cn(
-                        "w-full border-2 text-left font-mono transition-all hover:border-primary hover:bg-primary/5",
+                        "w-full border-2 text-left font-mono transition-all",
                         getNumberFontVariantClass(numberFontVariant),
-                        isSelected
-                          ? "border-primary bg-primary/5"
-                          : "border-border"
+                        isDisabled
+                          ? "border-border/50 bg-muted/30 text-muted-foreground/50 cursor-not-allowed opacity-50"
+                          : isSelected
+                          ? "border-primary bg-primary/5 hover:border-primary hover:bg-primary/5"
+                          : "border-border hover:border-primary hover:bg-primary/5"
                       )}
                       style={{
                         padding: "var(--style-card-padding, 1.25rem)",

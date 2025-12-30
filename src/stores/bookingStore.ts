@@ -1,0 +1,69 @@
+import { create } from "zustand";
+import type { CalendarValue } from "../components/KairoCalendar";
+import type { TimeSlotVariant } from "../components/steps/KairoStepSchedule";
+import type { PaymentMethod } from "../components/steps/KairoStepPayment";
+
+interface BookingState {
+  // Step 1: Calendario
+  step: 1 | 2 | 3;
+  selectedDate: CalendarValue | null;
+  selectedSlot: { hour: number; minute: number } | null;
+  timeSlotVariant: TimeSlotVariant;
+
+  // Step 2: Formulario
+  name: string;
+  email: string;
+  query: string;
+  phone: string;
+  wantsFile: boolean;
+  file: File | null;
+
+  // Step 3: Pago
+  paymentMethod: PaymentMethod | null;
+
+  // Actions
+  setStep: (step: 1 | 2 | 3) => void;
+  setSelectedDate: (date: CalendarValue | null) => void;
+  setSelectedSlot: (slot: { hour: number; minute: number } | null) => void;
+  setTimeSlotVariant: (variant: TimeSlotVariant) => void;
+  setName: (name: string) => void;
+  setEmail: (email: string) => void;
+  setQuery: (query: string) => void;
+  setPhone: (phone: string) => void;
+  setWantsFile: (wantsFile: boolean) => void;
+  setFile: (file: File | null) => void;
+  setPaymentMethod: (method: PaymentMethod | null) => void;
+  reset: () => void;
+}
+
+const initialState = {
+  step: 1 as const,
+  selectedDate: null as CalendarValue | null,
+  selectedSlot: null as { hour: number; minute: number } | null,
+  timeSlotVariant: "default" as TimeSlotVariant,
+  name: "",
+  email: "",
+  query: "",
+  phone: "",
+  wantsFile: false,
+  file: null as File | null,
+  paymentMethod: null as PaymentMethod | null,
+};
+
+export const useBookingStore = create<BookingState>((set) => ({
+  ...initialState,
+
+  setStep: (step) => set({ step }),
+  setSelectedDate: (date) => set({ selectedDate: date }),
+  setSelectedSlot: (slot) => set({ selectedSlot: slot }),
+  setTimeSlotVariant: (variant) => set({ timeSlotVariant: variant }),
+  setName: (name) => set({ name }),
+  setEmail: (email) => set({ email }),
+  setQuery: (query) => set({ query }),
+  setPhone: (phone) => set({ phone }),
+  setWantsFile: (wantsFile) => set({ wantsFile }),
+  setFile: (file) => set({ file }),
+  setPaymentMethod: (method) => set({ paymentMethod: method }),
+  reset: () => set(initialState),
+}));
+

@@ -1,10 +1,8 @@
 // src/App.tsx
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { useYourIdAuth } from "./sdk/useYourIDAuth";
-import KairoStepPayment, {
-  type PaymentMethod,
-} from "./components/steps/KairoStepPayment";
+import KairoStepPayment from "./components/steps/KairoStepPayment";
 import KairoStepForm from "./components/steps/KairoStepForm";
 import KairoStepSchedule, {
   type TimeSlot,
@@ -12,51 +10,109 @@ import KairoStepSchedule, {
 } from "./components/steps/KairoStepSchedule";
 import type { CalendarValue } from "./components/KairoCalendar";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
+import { SocialLinks } from "./components/SocialLinks/SocialLinks";
 import { useTheme } from "./contexts/ThemeContext";
 import { useProfessionalId } from "./utils/useProfessionalId";
-import { useCalendarSchedule, type DayOfWeek, type TimeRange } from "./hooks/useCalendarSchedule";
+import {
+  useCalendarSchedule,
+  type DayOfWeek,
+  type TimeRange,
+} from "./hooks/useCalendarSchedule";
+import { useCreateMercadoPagoPreference } from "./hooks/useCreateMercadoPagoPreference";
+import { useCreateAppointment } from "./hooks/useCreateAppointment";
 import type { ThemeName, ExtraThemeName } from "./themes";
-import { styleVariants, type StyleVariantName, STYLE_VARIANT_NAMES } from "./utils/styleVariants";
+import {
+  styleVariants,
+  type StyleVariantName,
+  STYLE_VARIANT_NAMES,
+} from "./utils/styleVariants";
+import { useBookingStore } from "./stores/bookingStore";
 
 function App() {
   const { setThemeFromCalendar } = useTheme();
   const professionalId = useProfessionalId();
-  const { schedule, loading: scheduleLoading, error: scheduleError } = useCalendarSchedule();
-  
+  const {
+    schedule,
+    loading: scheduleLoading,
+    error: scheduleError,
+  } = useCalendarSchedule();
+
   // Inicializar variante de estilo al cargar la app
   useEffect(() => {
-    const saved = localStorage.getItem("kairo-style-variant") as StyleVariantName;
-    const variantName = saved && STYLE_VARIANT_NAMES.includes(saved) ? saved : "default";
+    const saved = localStorage.getItem(
+      "kairo-style-variant"
+    ) as StyleVariantName;
+    const variantName =
+      saved && STYLE_VARIANT_NAMES.includes(saved) ? saved : "default";
     const variant = styleVariants[variantName];
     const root = document.documentElement;
-    
+
     // Aplicar estilos de texto como variables CSS
     root.style.setProperty("--style-title-size", variant.textStyles.titleSize);
-    root.style.setProperty("--style-title-weight", variant.textStyles.titleWeight);
-    root.style.setProperty("--style-subtitle-size", variant.textStyles.subtitleSize);
-    root.style.setProperty("--style-subtitle-weight", variant.textStyles.subtitleWeight);
+    root.style.setProperty(
+      "--style-title-weight",
+      variant.textStyles.titleWeight
+    );
+    root.style.setProperty(
+      "--style-subtitle-size",
+      variant.textStyles.subtitleSize
+    );
+    root.style.setProperty(
+      "--style-subtitle-weight",
+      variant.textStyles.subtitleWeight
+    );
     root.style.setProperty("--style-body-size", variant.textStyles.bodySize);
-    root.style.setProperty("--style-body-weight", variant.textStyles.bodyWeight);
-    root.style.setProperty("--style-button-size", variant.textStyles.buttonSize);
-    root.style.setProperty("--style-button-weight", variant.textStyles.buttonWeight);
-    root.style.setProperty("--style-letter-spacing", variant.textStyles.letterSpacing);
-    root.style.setProperty("--style-line-height", variant.textStyles.lineHeight);
-    
+    root.style.setProperty(
+      "--style-body-weight",
+      variant.textStyles.bodyWeight
+    );
+    root.style.setProperty(
+      "--style-button-size",
+      variant.textStyles.buttonSize
+    );
+    root.style.setProperty(
+      "--style-button-weight",
+      variant.textStyles.buttonWeight
+    );
+    root.style.setProperty(
+      "--style-letter-spacing",
+      variant.textStyles.letterSpacing
+    );
+    root.style.setProperty(
+      "--style-line-height",
+      variant.textStyles.lineHeight
+    );
+
     // Aplicar estilos de números
-    root.style.setProperty("--style-number-variant", variant.numberStyles.fontVariant);
+    root.style.setProperty(
+      "--style-number-variant",
+      variant.numberStyles.fontVariant
+    );
     root.style.setProperty("--style-number-size", variant.numberStyles.size);
-    root.style.setProperty("--style-number-weight", variant.numberStyles.weight);
-    
+    root.style.setProperty(
+      "--style-number-weight",
+      variant.numberStyles.weight
+    );
+
     // Aplicar estilos de layout
-    root.style.setProperty("--style-container-padding", variant.layout.containerPadding);
-    root.style.setProperty("--style-component-gap", variant.layout.componentGap);
-    root.style.setProperty("--style-border-radius", variant.layout.borderRadius);
+    root.style.setProperty(
+      "--style-container-padding",
+      variant.layout.containerPadding
+    );
+    root.style.setProperty(
+      "--style-component-gap",
+      variant.layout.componentGap
+    );
+    root.style.setProperty(
+      "--style-border-radius",
+      variant.layout.borderRadius
+    );
     root.style.setProperty("--style-card-padding", variant.layout.cardPadding);
     root.style.setProperty("--style-spacing", variant.layout.spacing);
-    
+
     root.setAttribute("data-style-variant", variantName);
   }, []); // Solo al montar
-  
+
   // Escuchar cambios en las variables CSS desde el ThemeSwitcher
   useEffect(() => {
     const handleStyleVariantChange = (e: Event) => {
@@ -64,41 +120,127 @@ function App() {
       if (customEvent.detail) {
         const variant = styleVariants[customEvent.detail];
         const root = document.documentElement;
-        
+
         // Aplicar todas las variables CSS
-        root.style.setProperty("--style-title-size", variant.textStyles.titleSize);
-        root.style.setProperty("--style-title-weight", variant.textStyles.titleWeight);
-        root.style.setProperty("--style-subtitle-size", variant.textStyles.subtitleSize);
-        root.style.setProperty("--style-subtitle-weight", variant.textStyles.subtitleWeight);
-        root.style.setProperty("--style-body-size", variant.textStyles.bodySize);
-        root.style.setProperty("--style-body-weight", variant.textStyles.bodyWeight);
-        root.style.setProperty("--style-button-size", variant.textStyles.buttonSize);
-        root.style.setProperty("--style-button-weight", variant.textStyles.buttonWeight);
-        root.style.setProperty("--style-letter-spacing", variant.textStyles.letterSpacing);
-        root.style.setProperty("--style-line-height", variant.textStyles.lineHeight);
-        root.style.setProperty("--style-number-variant", variant.numberStyles.fontVariant);
-        root.style.setProperty("--style-number-size", variant.numberStyles.size);
-        root.style.setProperty("--style-number-weight", variant.numberStyles.weight);
-        root.style.setProperty("--style-container-padding", variant.layout.containerPadding);
-        root.style.setProperty("--style-component-gap", variant.layout.componentGap);
-        root.style.setProperty("--style-border-radius", variant.layout.borderRadius);
-        root.style.setProperty("--style-card-padding", variant.layout.cardPadding);
+        root.style.setProperty(
+          "--style-title-size",
+          variant.textStyles.titleSize
+        );
+        root.style.setProperty(
+          "--style-title-weight",
+          variant.textStyles.titleWeight
+        );
+        root.style.setProperty(
+          "--style-subtitle-size",
+          variant.textStyles.subtitleSize
+        );
+        root.style.setProperty(
+          "--style-subtitle-weight",
+          variant.textStyles.subtitleWeight
+        );
+        root.style.setProperty(
+          "--style-body-size",
+          variant.textStyles.bodySize
+        );
+        root.style.setProperty(
+          "--style-body-weight",
+          variant.textStyles.bodyWeight
+        );
+        root.style.setProperty(
+          "--style-button-size",
+          variant.textStyles.buttonSize
+        );
+        root.style.setProperty(
+          "--style-button-weight",
+          variant.textStyles.buttonWeight
+        );
+        root.style.setProperty(
+          "--style-letter-spacing",
+          variant.textStyles.letterSpacing
+        );
+        root.style.setProperty(
+          "--style-line-height",
+          variant.textStyles.lineHeight
+        );
+        root.style.setProperty(
+          "--style-number-variant",
+          variant.numberStyles.fontVariant
+        );
+        root.style.setProperty(
+          "--style-number-size",
+          variant.numberStyles.size
+        );
+        root.style.setProperty(
+          "--style-number-weight",
+          variant.numberStyles.weight
+        );
+        root.style.setProperty(
+          "--style-container-padding",
+          variant.layout.containerPadding
+        );
+        root.style.setProperty(
+          "--style-component-gap",
+          variant.layout.componentGap
+        );
+        root.style.setProperty(
+          "--style-border-radius",
+          variant.layout.borderRadius
+        );
+        root.style.setProperty(
+          "--style-card-padding",
+          variant.layout.cardPadding
+        );
         root.style.setProperty("--style-spacing", variant.layout.spacing);
         root.setAttribute("data-style-variant", customEvent.detail);
       }
     };
-    
+
     window.addEventListener("styleVariantChanged", handleStyleVariantChange);
     return () => {
-      window.removeEventListener("styleVariantChanged", handleStyleVariantChange);
+      window.removeEventListener(
+        "styleVariantChanged",
+        handleStyleVariantChange
+      );
     };
   }, []);
-  
-  // Estado para la variante de visualización de horarios
-  const [timeSlotVariant, setTimeSlotVariant] = useState<TimeSlotVariant>(() => {
-    const saved = localStorage.getItem("kairo-time-slot-variant") as TimeSlotVariant;
-    return saved && ["grid", "list", "timeline"].includes(saved) ? saved : "grid";
-  });
+
+  // Estado para la variante de visualización de horarios (mantener en localStorage)
+  const [timeSlotVariant, setTimeSlotVariant] = useState<TimeSlotVariant>(
+    () => {
+      const saved = localStorage.getItem(
+        "kairo-time-slot-variant"
+      ) as TimeSlotVariant;
+      return saved && ["grid", "list", "timeline"].includes(saved)
+        ? saved
+        : "grid";
+    }
+  );
+
+  // Store de Zustand para el estado del formulario
+  const {
+    step,
+    selectedDate: storeSelectedDate,
+    selectedSlot,
+    name,
+    email,
+    query,
+    phone,
+    wantsFile,
+    file,
+    paymentMethod,
+    setStep,
+    setSelectedDate,
+    setSelectedSlot: setStoreSelectedSlot,
+    setTimeSlotVariant: setStoreTimeSlotVariant,
+    setName,
+    setEmail,
+    setQuery,
+    setPhone,
+    setWantsFile,
+    setFile,
+    setPaymentMethod,
+    reset: resetBooking,
+  } = useBookingStore();
 
   // Escuchar cambios desde el ThemeSwitcher y cambios en localStorage
   useEffect(() => {
@@ -108,10 +250,10 @@ function App() {
         setTimeSlotVariant(customEvent.detail);
       }
     };
-    
+
     // Escuchar evento personalizado
     window.addEventListener("timeSlotVariantChanged", handleVariantChange);
-    
+
     // También escuchar cambios en localStorage (por si se cambia desde otra pestaña)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "kairo-time-slot-variant" && e.newValue) {
@@ -121,27 +263,33 @@ function App() {
         }
       }
     };
-    
+
     window.addEventListener("storage", handleStorageChange);
-    
+
     return () => {
       window.removeEventListener("timeSlotVariantChanged", handleVariantChange);
       window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
-  
+
   // También verificar localStorage periódicamente (fallback)
   useEffect(() => {
     const interval = setInterval(() => {
-      const saved = localStorage.getItem("kairo-time-slot-variant") as TimeSlotVariant;
-      if (saved && ["grid", "list", "timeline"].includes(saved) && saved !== timeSlotVariant) {
+      const saved = localStorage.getItem(
+        "kairo-time-slot-variant"
+      ) as TimeSlotVariant;
+      if (
+        saved &&
+        ["grid", "list", "timeline"].includes(saved) &&
+        saved !== timeSlotVariant
+      ) {
         setTimeSlotVariant(saved);
       }
     }, 500);
-    
+
     return () => clearInterval(interval);
   }, [timeSlotVariant]);
-  
+
   useYourIdAuth({
     applicationBaseUrl: import.meta.env.VITE_APPLICATION_URL,
     yourIdLoginUrl: import.meta.env.VITE_YOUR_ID_LOGIN_URL,
@@ -154,9 +302,19 @@ function App() {
     if (schedule?.theme && !hasAppliedCalendarTheme.current) {
       // Validar que el tema sea uno de los temas válidos (originales o extra)
       const validThemes: readonly (ThemeName | ExtraThemeName)[] = [
-        "violeta", "calido", "metalico", "verde", "rosa",
-        "violeta-rosa", "verde-calido", "metalico-violeta", "rosa-verde",
-        "calido-metalico", "violeta-verde", "rosa-metalico", "verde-rosa"
+        "violeta",
+        "calido",
+        "metalico",
+        "verde",
+        "rosa",
+        "violeta-rosa",
+        "verde-calido",
+        "metalico-violeta",
+        "rosa-verde",
+        "calido-metalico",
+        "violeta-verde",
+        "rosa-metalico",
+        "verde-rosa",
       ];
       const calendarTheme = schedule.theme as ThemeName | ExtraThemeName;
       if (validThemes.includes(calendarTheme)) {
@@ -172,140 +330,479 @@ function App() {
     if (import.meta.env.VITE_ENV === "dev" && !professionalId) {
       console.warn(
         "⚠️ No se encontró professionalId. Opciones:\n" +
-        "1. URL: /calendar/:professionalId\n" +
-        "2. Query: ?professionalId=xxx\n" +
-        "3. Env: VITE_PROFESSIONAL_ID=xxx"
+          "1. URL: /calendar/:professionalId\n" +
+          "2. Query: ?professionalId=xxx\n" +
+          "3. Env: VITE_PROFESSIONAL_ID=xxx"
       );
     }
   }, [professionalId]);
 
-  // 🔹 1 = fecha/horario, 2 = formulario, 3 = pago
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-
   // Step 1: fecha + horario
   const [value, setValue] = useState<CalendarValue>(new Date());
-  const [selectedSlot, setSelectedSlot] = useState<{ hour: number; minute: number } | null>(null);
   const hasAutoSelectedRef = useRef(false);
-  
+
+  // Sincronizar value con store cuando cambia
+  useEffect(() => {
+    if (value && !Array.isArray(value)) {
+      setSelectedDate(value);
+    }
+  }, [value, setSelectedDate]);
+
+  // Función helper para formatear fecha a YYYY-MM-DD
+  const formatDateToString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Calcular bloqueos basándose en confirmationMaxHours (bloquea las próximas N horas desde ahora)
+  const blockedDates = useMemo(() => {
+    const blocked: Record<string, { disabled?: boolean }> = {};
+
+    const confirmationMaxHours =
+      schedule?.bookingSettings?.confirmationMaxHours;
+
+    // Si confirmationMaxHours es null o undefined, no bloquear nada
+    if (!confirmationMaxHours || confirmationMaxHours <= 0) {
+      return blocked;
+    }
+
+    const now = new Date();
+    const blockUntil = new Date(
+      now.getTime() + confirmationMaxHours * 60 * 60 * 1000
+    );
+
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const blockUntilStart = new Date(blockUntil);
+    blockUntilStart.setHours(0, 0, 0, 0);
+
+    // Siempre bloquear el día de hoy si hay un bloqueo activo
+    // (el bloqueo siempre se extiende al menos hasta más tarde hoy o mañana)
+    const todayString = formatDateToString(todayStart);
+    blocked[todayString] = { disabled: true };
+
+    // Bloquear días completos intermedios (si los hay)
+    const currentDate = new Date(todayStart);
+    currentDate.setDate(currentDate.getDate() + 1); // Empezar desde mañana
+
+    while (currentDate < blockUntilStart) {
+      const dateString = formatDateToString(new Date(currentDate));
+      blocked[dateString] = { disabled: true };
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Si el bloqueo termina en un día futuro, también bloquear ese día
+    if (blockUntilStart > todayStart) {
+      const lastDayString = formatDateToString(blockUntilStart);
+      blocked[lastDayString] = { disabled: true };
+    }
+
+    return blocked;
+  }, [schedule?.bookingSettings?.confirmationMaxHours]);
+
+  // Combinar dateOverrides existentes con los días bloqueados por confirmationMaxHours
+  const combinedDateOverrides = useMemo(() => {
+    const existing = schedule?.dateOverrides || {};
+    // Los bloqueos por confirmationMaxHours tienen prioridad (sobrescriben si hay conflicto)
+    return { ...existing, ...blockedDates };
+  }, [schedule?.dateOverrides, blockedDates]);
+
+  // Función helper para verificar si un día tiene slots disponibles (considerando bloqueos)
+  const hasAvailableSlots = useMemo(() => {
+    return (checkDate: Date): boolean => {
+      if (!schedule) return false;
+
+      const dateString = formatDateToString(checkDate);
+      const dateOverride = combinedDateOverrides?.[dateString];
+
+      // Si el día está deshabilitado explícitamente, no tiene slots
+      if (dateOverride?.disabled) {
+        return false;
+      }
+
+      // Obtener timeRanges para este día
+      let dayRanges: TimeRange[] = [];
+      if (
+        dateOverride &&
+        "timeRanges" in dateOverride &&
+        dateOverride.timeRanges &&
+        dateOverride.timeRanges.length > 0
+      ) {
+        dayRanges = dateOverride.timeRanges;
+      } else {
+        const dayOfWeek = checkDate.getDay();
+        const dayMap: Record<number, DayOfWeek> = {
+          0: "sun",
+          1: "mon",
+          2: "tue",
+          3: "wed",
+          4: "thu",
+          5: "fri",
+          6: "sat",
+        };
+        const dayKey = dayMap[dayOfWeek];
+        if (!dayKey || !schedule.enabledDays.includes(dayKey)) {
+          return false;
+        }
+        dayRanges = schedule.byDay[dayKey] || [];
+      }
+
+      if (dayRanges.length === 0) {
+        return false;
+      }
+
+      // Verificar bloqueo por confirmationMaxHours
+      const confirmationMaxHours =
+        schedule?.bookingSettings?.confirmationMaxHours;
+      const now = new Date();
+      const blockUntil =
+        confirmationMaxHours && confirmationMaxHours > 0
+          ? new Date(now.getTime() + confirmationMaxHours * 60 * 60 * 1000)
+          : null;
+
+      // Verificar si hay al menos un slot disponible después del bloqueo
+      for (const range of dayRanges) {
+        const [startHour, startMinute] = range.start.split(":").map(Number);
+        const [endHour, endMinute] = range.end.split(":").map(Number);
+
+        const startTime = startHour * 60 + startMinute;
+        const endTime = endHour * 60 + endMinute;
+        const slotDuration = schedule.slotMinutes;
+        const bufferMinutes = schedule.bufferMinutes || 0;
+        // El intervalo entre turnos es slotMinutes + bufferMinutes
+        const intervalBetweenSlots = slotDuration + bufferMinutes;
+
+        for (
+          let time = startTime;
+          time < endTime;
+          time += intervalBetweenSlots
+        ) {
+          const slotHour = Math.floor(time / 60);
+          const slotMinute = time % 60;
+          const nextTime = time + slotDuration;
+
+          if (nextTime > endTime) break;
+
+          // Crear fecha/hora del slot
+          const slotDateTime = new Date(checkDate);
+          slotDateTime.setHours(slotHour, slotMinute, 0, 0);
+          const slotEndDateTime = new Date(checkDate);
+          slotEndDateTime.setHours(
+            Math.floor(nextTime / 60),
+            nextTime % 60,
+            0,
+            0
+          );
+
+          // Verificar si este slot está disponible (después del bloqueo)
+          if (blockUntil && slotDateTime < blockUntil) {
+            continue;
+          }
+
+          // Verificar si este slot está ocupado por un appointment existente
+          const isSlotOccupied = schedule.appointments?.some((appointment) => {
+            // Los appointments vienen en UTC (ISO 8601), convertirlos a fecha local
+            const appointmentStart = new Date(appointment.startTime);
+            const appointmentEnd = new Date(appointment.endTime);
+
+            // Aplicar bufferMinutes al final del appointment
+            // El buffer se agrega después del appointment para dejar tiempo entre citas
+            const appointmentEndWithBuffer = new Date(
+              appointmentEnd.getTime() +
+                (schedule.bufferMinutes || 0) * 60 * 1000
+            );
+
+            // Normalizar las fechas a la misma zona horaria para comparar
+            // Comparar solo la fecha (año, mes, día) y hora (hora, minuto)
+            const slotDateStr = formatDateToString(slotDateTime);
+            const appointmentDateStr = formatDateToString(appointmentStart);
+
+            // Solo comparar si es el mismo día
+            if (slotDateStr !== appointmentDateStr) {
+              return false;
+            }
+
+            // Si es el mismo día, comparar las horas
+            const slotStartMinutes =
+              slotDateTime.getHours() * 60 + slotDateTime.getMinutes();
+            const slotEndMinutes =
+              slotEndDateTime.getHours() * 60 + slotEndDateTime.getMinutes();
+            const appointmentStartMinutes =
+              appointmentStart.getHours() * 60 + appointmentStart.getMinutes();
+            const appointmentEndWithBufferMinutes =
+              appointmentEndWithBuffer.getHours() * 60 +
+              appointmentEndWithBuffer.getMinutes();
+
+            // Verificar si hay solapamiento entre el slot y el appointment (incluyendo buffer)
+            // Fórmula simple y correcta: dos intervalos se solapan si
+            // slotStart < appointmentEndWithBuffer && slotEnd > appointmentStart
+            const hasOverlap =
+              slotStartMinutes < appointmentEndWithBufferMinutes &&
+              slotEndMinutes > appointmentStartMinutes;
+
+            return hasOverlap;
+          });
+
+          // Si el slot está disponible (no bloqueado y no ocupado), retornar true
+          if (!isSlotOccupied) {
+            return true;
+          }
+        }
+      }
+
+      return false; // No hay slots disponibles
+    };
+  }, [schedule, combinedDateOverrides]);
+
   // Seleccionar automáticamente el primer día disponible cuando se carga el schedule
   useEffect(() => {
     if (!schedule || scheduleLoading || hasAutoSelectedRef.current) return;
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    // Buscar el primer día disponible que tenga horarios
+
+    // Buscar el primer día disponible que tenga slots disponibles
     let firstAvailableDate: Date | null = null;
-    
-    // Mapeo de días de la semana: 0 = domingo, 1 = lunes, etc.
-    const dayMap: Record<number, DayOfWeek> = {
-      0: "sun",
-      1: "mon",
-      2: "tue",
-      3: "wed",
-      4: "thu",
-      5: "fri",
-      6: "sat",
-    };
-    
-    // Buscar en los próximos 30 días
-    for (let i = 0; i < 30; i++) {
+
+    // Buscar en los próximos 60 días (aumentado para asegurar encontrar uno)
+    for (let i = 0; i < 60; i++) {
       const checkDate = new Date(today);
       checkDate.setDate(today.getDate() + i);
-      
-      const dayOfWeek = checkDate.getDay();
-      const dayKey = dayMap[dayOfWeek];
-      
-      if (!dayKey) continue;
-      
-      // Verificar si el día está habilitado y tiene horarios
-      if (
-        schedule.enabledDays.includes(dayKey) &&
-        schedule.byDay[dayKey] &&
-        schedule.byDay[dayKey].length > 0
-      ) {
+
+      // Verificar si este día tiene slots disponibles
+      if (hasAvailableSlots(checkDate)) {
         firstAvailableDate = checkDate;
         break;
       }
     }
-    
+
     // Si encontramos un día disponible, seleccionarlo
     if (firstAvailableDate) {
       setValue(firstAvailableDate);
+      setSelectedDate(firstAvailableDate);
       hasAutoSelectedRef.current = true;
     }
-  }, [schedule, scheduleLoading]);
+  }, [schedule, scheduleLoading, setSelectedDate, hasAvailableSlots]);
 
-  const selectedDate = useMemo(() => {
-    if (!value) return null;
-    if (Array.isArray(value)) return null;
-    return value;
-  }, [value]);
+  // Usar selectedDate del store, pero mantener value para el componente Calendar
+  const selectedDate: Date | null = storeSelectedDate
+    ? Array.isArray(storeSelectedDate)
+      ? null
+      : storeSelectedDate
+    : value && !Array.isArray(value)
+    ? value
+    : null;
 
   // Generar timeSlots basados en el schedule del calendario
   const timeSlots: TimeSlot[] = useMemo(() => {
     if (!selectedDate || !schedule) return [];
-    
-    // Obtener el día de la semana (0 = domingo, 1 = lunes, etc.)
-    const dayOfWeek = selectedDate.getDay();
-    const dayMap: Record<number, DayOfWeek> = {
-      0: "sun",
-      1: "mon",
-      2: "tue",
-      3: "wed",
-      4: "thu",
-      5: "fri",
-      6: "sat",
-    };
-    const dayKey = dayMap[dayOfWeek];
-    if (!dayKey) return [];
-    
-    // Verificar si el día está habilitado
-    if (!schedule.enabledDays.includes(dayKey)) {
+
+    // Formatear fecha seleccionada para verificar dateOverrides
+    const dateString = formatDateToString(selectedDate);
+
+    // Verificar si hay un dateOverride para esta fecha
+    // Usar combinedDateOverrides que incluye los días bloqueados por confirmationMaxHours
+    const dateOverride = combinedDateOverrides?.[dateString];
+
+    // Si el día está deshabilitado explícitamente, no mostrar slots
+    if (dateOverride?.disabled) {
       return [];
     }
-    
-    // Obtener horarios del día desde byDay
-    const dayRanges = schedule.byDay[dayKey] || [];
+
+    // Si hay timeRanges en el override, usar esos en lugar de byDay
+    let dayRanges: TimeRange[] = [];
+    if (
+      dateOverride &&
+      "timeRanges" in dateOverride &&
+      dateOverride.timeRanges &&
+      dateOverride.timeRanges.length > 0
+    ) {
+      dayRanges = dateOverride.timeRanges;
+    } else {
+      // Obtener el día de la semana (0 = domingo, 1 = lunes, etc.)
+      const dayOfWeek = selectedDate.getDay();
+      const dayMap: Record<number, DayOfWeek> = {
+        0: "sun",
+        1: "mon",
+        2: "tue",
+        3: "wed",
+        4: "thu",
+        5: "fri",
+        6: "sat",
+      };
+      const dayKey = dayMap[dayOfWeek];
+      if (!dayKey) return [];
+
+      // Verificar si el día está habilitado
+      if (!schedule.enabledDays.includes(dayKey)) {
+        return [];
+      }
+
+      // Obtener horarios del día desde byDay
+      dayRanges = schedule.byDay[dayKey] || [];
+    }
+
     if (dayRanges.length === 0) {
       return [];
     }
-    
+
+    // Obtener el bloqueo por confirmationMaxHours
+    const confirmationMaxHours =
+      schedule?.bookingSettings?.confirmationMaxHours;
+    const now = new Date();
+    const blockUntil =
+      confirmationMaxHours && confirmationMaxHours > 0
+        ? new Date(now.getTime() + confirmationMaxHours * 60 * 60 * 1000)
+        : null;
+
+    // Debug: mostrar appointments para el día seleccionado
+    if (import.meta.env.DEV && schedule.appointments) {
+      const dateStr = formatDateToString(selectedDate);
+      const dayAppointments = schedule.appointments.filter((apt) => {
+        const aptDate = new Date(apt.startTime);
+        return formatDateToString(aptDate) === dateStr;
+      });
+      if (dayAppointments.length > 0) {
+        console.log(
+          `📅 Appointments para ${dateStr}:`,
+          dayAppointments.map((apt) => ({
+            start: apt.startTime,
+            end: apt.endTime,
+            localStart: new Date(apt.startTime).toLocaleString(),
+            localEnd: new Date(apt.endTime).toLocaleString(),
+          }))
+        );
+      }
+    }
+
     // Generar slots basados en los rangos horarios y slotMinutes
     const slots: TimeSlot[] = [];
-    
+
     dayRanges.forEach((range: TimeRange) => {
       const [startHour, startMinute] = range.start.split(":").map(Number);
       const [endHour, endMinute] = range.end.split(":").map(Number);
-      
+
       const startTime = startHour * 60 + startMinute; // minutos desde medianoche
       const endTime = endHour * 60 + endMinute;
       const slotDuration = schedule.slotMinutes;
-      
-      // Generar slots cada slotMinutes minutos
-      for (let time = startTime; time < endTime; time += slotDuration) {
+      const bufferMinutes = schedule.bufferMinutes || 0;
+      // El intervalo entre turnos es slotMinutes + bufferMinutes
+      const intervalBetweenSlots = slotDuration + bufferMinutes;
+
+      // Generar slots con intervalo de slotMinutes + bufferMinutes entre turnos
+      for (let time = startTime; time < endTime; time += intervalBetweenSlots) {
         const slotHour = Math.floor(time / 60);
         const slotMinute = time % 60;
         const nextTime = time + slotDuration;
         const nextHour = Math.floor(nextTime / 60);
         const nextMinute = nextTime % 60;
-        
+
         // No crear slot si excede el rango
         if (nextTime > endTime) break;
-        
+
+        // Crear fecha/hora del slot
+        const slotDateTime = new Date(selectedDate);
+        slotDateTime.setHours(slotHour, slotMinute, 0, 0);
+        const slotEndDateTime = new Date(selectedDate);
+        slotEndDateTime.setHours(nextHour, nextMinute, 0, 0);
+
+        // Verificar si este slot está bloqueado por confirmationMaxHours
+        if (blockUntil && slotDateTime < blockUntil) {
+          continue;
+        }
+
+        // Verificar si este slot está ocupado por un appointment existente
+        const isSlotOccupied = schedule.appointments?.some((appointment) => {
+          // Los appointments vienen en UTC (ISO 8601), convertirlos a fecha local
+          const appointmentStart = new Date(appointment.startTime);
+          const appointmentEnd = new Date(appointment.endTime);
+
+          // Aplicar bufferMinutes al final del appointment
+          // El buffer se agrega después del appointment para dejar tiempo entre citas
+          const appointmentEndWithBuffer = new Date(
+            appointmentEnd.getTime() + (schedule.bufferMinutes || 0) * 60 * 1000
+          );
+
+          // Normalizar las fechas a la misma zona horaria para comparar
+          // Comparar solo la fecha (año, mes, día) y hora (hora, minuto)
+          const slotDateStr = formatDateToString(slotDateTime);
+          const appointmentDateStr = formatDateToString(appointmentStart);
+
+          // Solo comparar si es el mismo día
+          if (slotDateStr !== appointmentDateStr) {
+            return false;
+          }
+
+          // Si es el mismo día, comparar las horas
+          const slotStartMinutes =
+            slotDateTime.getHours() * 60 + slotDateTime.getMinutes();
+          const slotEndMinutes =
+            slotEndDateTime.getHours() * 60 + slotEndDateTime.getMinutes();
+          const appointmentStartMinutes =
+            appointmentStart.getHours() * 60 + appointmentStart.getMinutes();
+          const appointmentEndWithBufferMinutes =
+            appointmentEndWithBuffer.getHours() * 60 +
+            appointmentEndWithBuffer.getMinutes();
+
+          // Verificar si hay solapamiento entre el slot y el appointment (incluyendo buffer)
+          // El buffer se aplica después del appointment, así que bloqueamos hasta appointmentEnd + buffer
+          // Un slot está bloqueado si empieza antes de que termine el buffer
+          // Fórmula: slotStart < appointmentEndWithBuffer && slotEnd > appointmentStart
+          const hasOverlap =
+            slotStartMinutes < appointmentEndWithBufferMinutes &&
+            slotEndMinutes > appointmentStartMinutes;
+
+          // Debug: solo en desarrollo
+          if (import.meta.env.DEV && hasOverlap) {
+            console.log("🔴 Slot ocupado detectado:", {
+              slot: `${slotHour}:${slotMinute
+                .toString()
+                .padStart(2, "0")} - ${nextHour}:${nextMinute
+                .toString()
+                .padStart(2, "0")}`,
+              slotMinutes: `${slotStartMinutes} - ${slotEndMinutes}`,
+              appointment: `${appointmentStart.getHours()}:${appointmentStart
+                .getMinutes()
+                .toString()
+                .padStart(
+                  2,
+                  "0"
+                )} - ${appointmentEnd.getHours()}:${appointmentEnd
+                .getMinutes()
+                .toString()
+                .padStart(2, "0")}`,
+              appointmentMinutes: `${appointmentStartMinutes} - ${appointmentEndWithBufferMinutes}`,
+              bufferMinutes: schedule.bufferMinutes,
+              date: slotDateStr,
+              appointmentRaw: appointment.startTime,
+            });
+          }
+
+          return hasOverlap;
+        });
+
+        // Incluir el slot, pero marcarlo como deshabilitado si está ocupado
         slots.push({
           hour: slotHour,
           minute: slotMinute,
-          label: `${slotHour.toString().padStart(2, "0")}:${slotMinute.toString().padStart(2, "0")} - ${nextHour.toString().padStart(2, "0")}:${nextMinute.toString().padStart(2, "0")}`,
+          label: `${slotHour.toString().padStart(2, "0")}:${slotMinute
+            .toString()
+            .padStart(2, "0")} - ${nextHour
+            .toString()
+            .padStart(2, "0")}:${nextMinute.toString().padStart(2, "0")}`,
+          disabled: isSlotOccupied || false,
         });
       }
     });
-    
+
     return slots;
   }, [selectedDate, schedule]);
 
   const formattedSelection = useMemo(() => {
-    if (!selectedDate) return "Ninguna fecha seleccionada";
+    if (!selectedDate || Array.isArray(selectedDate))
+      return "Ninguna fecha seleccionada";
     return selectedDate.toLocaleDateString();
   }, [selectedDate]);
 
@@ -325,17 +822,7 @@ function App() {
     return end;
   }, [meetingStart, schedule]);
 
-  // Step 2: formulario
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [query, setQuery] = useState("");
-  const [wantsFile, setWantsFile] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-
-  // Step 3: pago
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(
-    null
-  );
+  // Los estados del formulario y pago ahora vienen del store de Zustand
 
   const handleContinueToForm = () => {
     if (!canContinue) return;
@@ -346,7 +833,63 @@ function App() {
     setStep(1);
   };
 
-  const handleContinueToPayment = () => {
+  // Sincronizar timeSlotVariant con el store
+  useEffect(() => {
+    setStoreTimeSlotVariant(timeSlotVariant);
+  }, [timeSlotVariant, setStoreTimeSlotVariant]);
+
+  const handleContinueToPayment = async () => {
+    // Si confirmCaseBeforePayment es true, crear la cita y redirigir a la página de caso en análisis
+    if (schedule?.bookingSettings?.confirmCaseBeforePayment) {
+      if (!meetingStart || !name || !email) {
+        console.error("Faltan datos requeridos para crear la cita");
+        return;
+      }
+
+      const calendarSlug = schedule?.calendarSlug;
+
+      if (!calendarSlug) {
+        console.error("No se encontró calendarSlug");
+        return;
+      }
+
+      try {
+        // Crear la cita con método de pago "cash" por defecto (o el que corresponda)
+        // El backend puede manejar el estado cuando confirmCaseBeforePayment es true
+        const appointment = await createAppointmentMutation.mutateAsync({
+          calendarSlug,
+          clientName: name,
+          clientEmail: email,
+          clientPhone: phone || undefined,
+          startTime: meetingStart.toISOString(),
+          paymentMethod: "cash", // Método por defecto cuando se requiere confirmación antes del pago
+          notes: query || undefined,
+        });
+
+        console.log(
+          "Cita creada exitosamente (pendiente de confirmación):",
+          appointment
+        );
+
+        // Construir URL de redirección
+        const params = new URLSearchParams();
+        if (calendarSlug) params.set("calendarSlug", calendarSlug);
+        if (name) params.set("userName", encodeURIComponent(name));
+        const url = `/case-under-review${
+          params.toString() ? `?${params.toString()}` : ""
+        }`;
+
+        // Resetear el store antes de redirigir
+        resetBooking();
+        window.location.href = url;
+      } catch (err) {
+        console.error("Error al crear la cita:", err);
+        // Aquí podrías mostrar un mensaje de error al usuario
+        // Por ahora no redirigimos si hay error
+      }
+      return;
+    }
+    // Si no, continuar al paso de pago
     setStep(3);
   };
 
@@ -354,41 +897,72 @@ function App() {
     setStep(2);
   };
 
+  // Hook para crear preferencia de Mercado Pago
+  const createPreferenceMutation = useCreateMercadoPagoPreference();
+  // Hook para crear appointment
+  const createAppointmentMutation = useCreateAppointment();
+
   const handleConfirmReservation = async () => {
-    if (!meetingStart || !meetingEnd || !paymentMethod) return;
+    if (!meetingStart || !meetingEnd || !paymentMethod || !name || !email)
+      return;
 
-    if (paymentMethod === "mercado_pago") {
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/mercadopago/create-preference`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: "Meet 1 hora",
-              price: 5000,
-              quantity: 1,
-              reservationId: "temp-123", // esto luego será real
-            }),
-          }
-        );
+    const calendarSlug = schedule?.calendarSlug;
 
-        const data = await response.json();
-
-        if (!data.initPoint) {
-          console.error("Backend no devolvió initPoint", data);
-          return;
-        }
-
-        // 🚀 REDIRECCIÓN A MERCADO PAGO
-        window.location.href = data.initPoint;
-      } catch (err) {
-        console.error("Error al crear preferencia MP", err);
-      }
+    if (!calendarSlug) {
+      console.error("No se encontró calendarSlug");
+      return;
     }
 
-    if (paymentMethod === "transferencia") {
-      alert("Acá mostrarías los datos bancarios.");
+    // Crear la cita primero
+    try {
+      const appointment = await createAppointmentMutation.mutateAsync({
+        calendarSlug,
+        clientName: name,
+        clientEmail: email,
+        clientPhone: phone || undefined,
+        startTime: meetingStart.toISOString(),
+        paymentMethod: paymentMethod,
+        notes: query || undefined,
+      });
+
+      console.log("Cita creada exitosamente:", appointment);
+
+      // Según el método de pago, proceder con el flujo correspondiente
+      if (paymentMethod === "mercadopago") {
+        // Construir las URLs de redirección basadas en el origen actual
+        const baseUrl = window.location.origin;
+        const successUrl = `${baseUrl}/payment/success`;
+        const failureUrl = `${baseUrl}/payment/failure`;
+        const pendingUrl = `${baseUrl}/payment/pending`;
+
+        try {
+          const data = await createPreferenceMutation.mutateAsync({
+            calendarSlug,
+            amount: 5000.0,
+            currency: "ARS",
+            successUrl,
+            failureUrl,
+            pendingUrl,
+          });
+
+          // 🚀 REDIRECCIÓN A MERCADO PAGO
+          // Resetear el store antes de redirigir
+          resetBooking();
+          window.location.href = data.initPoint;
+        } catch (err) {
+          console.error("Error al crear preferencia MP", err);
+          // Aquí podrías mostrar un mensaje de error al usuario
+        }
+      } else if (paymentMethod === "transfer" || paymentMethod === "cash") {
+        // Para transfer y cash, la cita ya está creada
+        // Los datos de pago ya se muestran en el componente
+        console.log("Reserva confirmada con método:", paymentMethod);
+        // Resetear el store después de confirmar
+        resetBooking();
+      }
+    } catch (err) {
+      console.error("Error al crear la cita:", err);
+      // Aquí podrías mostrar un mensaje de error al usuario
     }
   };
 
@@ -401,7 +975,10 @@ function App() {
 
   const step1Subtitle = useMemo(() => {
     if (schedule?.calendarSubtitle) return schedule.calendarSubtitle;
-    return import.meta.env.VITE_STEP1_SUBTITLE || "Elegí una fecha desde hoy en adelante para programar tu meet luego del pago.";
+    return (
+      import.meta.env.VITE_STEP1_SUBTITLE ||
+      "Elegí una fecha desde hoy en adelante para programar tu meet luego del pago."
+    );
   }, [schedule?.calendarSubtitle]);
 
   // Títulos y subtítulos dinámicos
@@ -414,9 +991,7 @@ function App() {
         };
       case 2:
         return {
-          title: name
-            ? `Hola, ${name}!`
-            : "Datos del meet",
+          title: name ? `Hola, ${name}!` : "Datos del meet",
           subtitle: name
             ? "Completá los datos restantes para continuar"
             : "Completá tus datos para continuar con el modo de pago.",
@@ -424,9 +999,13 @@ function App() {
       case 3:
         return {
           title: paymentMethod
-            ? paymentMethod === "mercado_pago"
+            ? paymentMethod === "mercadopago"
               ? "Pago con Mercado Pago"
-              : "Transferencia bancaria"
+              : paymentMethod === "transfer"
+              ? "Transferencia bancaria"
+              : paymentMethod === "cash"
+              ? "Pago en efectivo"
+              : "Modo de pago"
             : "Modo de pago",
           subtitle: paymentMethod
             ? "Confirmá tu reserva para finalizar"
@@ -445,209 +1024,211 @@ function App() {
       {/* Stepper mejorado - posición fixed fuera del flujo principal */}
       {/* Comentado temporalmente - componente no eliminado */}
       {false && (
-      <div 
-        className="fixed top-4 right-4 z-50"
-        style={{
-          maxWidth: "calc(100vw - 2rem)",
-        }}
-      >
-        <div 
-          className="flex items-center flex-wrap gap-2"
+        <div
+          className="fixed top-4 right-4 z-50"
           style={{
-            gap: "var(--style-component-gap, 0.5rem)",
-            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-            borderRadius: "9999px",
-            padding: "0.5rem",
-            backgroundColor: "var(--background)",
+            maxWidth: "calc(100vw - 2rem)",
           }}
         >
           <div
-            className={`flex items-center font-medium transition-all ${
-              step === 1
-                ? "bg-primary text-primary-foreground"
-                : step > 1
-                ? ""
-                : "bg-muted text-muted-foreground"
-            }`}
+            className="flex items-center flex-wrap gap-2"
             style={{
               gap: "var(--style-component-gap, 0.5rem)",
-              padding: "var(--style-card-padding, 0.5rem 0.75rem)",
+              boxShadow:
+                "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
               borderRadius: "9999px",
-              ...(step > 1 && {
-                backgroundColor: "var(--color-primary-100)",
-                color: "var(--color-primary-700)",
-              }),
+              padding: "0.5rem",
+              backgroundColor: "var(--background)",
             }}
           >
-            <span
-              className={`rounded-full flex items-center justify-center font-bold ${
+            <div
+              className={`flex items-center font-medium transition-all ${
                 step === 1
-                  ? "bg-primary-foreground text-primary"
+                  ? "bg-primary text-primary-foreground"
                   : step > 1
                   ? ""
-                  : "bg-background text-foreground"
+                  : "bg-muted text-muted-foreground"
               }`}
               style={{
-                width: "1.5rem",
-                height: "1.5rem",
-                fontSize: "var(--style-body-size, 0.75rem)",
+                gap: "var(--style-component-gap, 0.5rem)",
+                padding: "var(--style-card-padding, 0.5rem 0.75rem)",
+                borderRadius: "9999px",
                 ...(step > 1 && {
-                  backgroundColor: "var(--color-primary-600)",
-                  color: "white",
+                  backgroundColor: "var(--color-primary-100)",
+                  color: "var(--color-primary-700)",
                 }),
               }}
             >
-              {step > 1 ? (
-                <Check size={14} strokeWidth={3} />
-              ) : (
-                "1"
-              )}
-            </span>
-            <span
-              className="hidden md:inline"
-              style={{
-                fontSize: "var(--style-body-size, 0.75rem)",
-                fontWeight: "var(--style-body-weight, 500)",
-              }}
-            >
-              Fecha y horario
-            </span>
-          </div>
-          <div
-            className={`flex items-center font-medium transition-all ${
-              step === 2
-                ? "bg-primary text-primary-foreground"
-                : step > 2
-                ? ""
-                : "bg-muted text-muted-foreground"
-            }`}
-            style={{
-              gap: "var(--style-component-gap, 0.5rem)",
-              padding: "var(--style-card-padding, 0.5rem 0.75rem)",
-              borderRadius: "9999px",
-              ...(step > 2 && {
-                backgroundColor: "var(--color-primary-100)",
-                color: "var(--color-primary-700)",
-              }),
-            }}
-          >
-            <span
-              className={`rounded-full flex items-center justify-center font-bold ${
+              <span
+                className={`rounded-full flex items-center justify-center font-bold ${
+                  step === 1
+                    ? "bg-primary-foreground text-primary"
+                    : step > 1
+                    ? ""
+                    : "bg-background text-foreground"
+                }`}
+                style={{
+                  width: "1.5rem",
+                  height: "1.5rem",
+                  fontSize: "var(--style-body-size, 0.75rem)",
+                  ...(step > 1 && {
+                    backgroundColor: "var(--color-primary-600)",
+                    color: "white",
+                  }),
+                }}
+              >
+                {step > 1 ? <Check size={14} strokeWidth={3} /> : "1"}
+              </span>
+              <span
+                className="hidden md:inline"
+                style={{
+                  fontSize: "var(--style-body-size, 0.75rem)",
+                  fontWeight: "var(--style-body-weight, 500)",
+                }}
+              >
+                Fecha y horario
+              </span>
+            </div>
+            <div
+              className={`flex items-center font-medium transition-all ${
                 step === 2
-                  ? "bg-primary-foreground text-primary"
+                  ? "bg-primary text-primary-foreground"
                   : step > 2
                   ? ""
-                  : "bg-background text-foreground"
+                  : "bg-muted text-muted-foreground"
               }`}
               style={{
-                width: "1.5rem",
-                height: "1.5rem",
-                fontSize: "var(--style-body-size, 0.75rem)",
+                gap: "var(--style-component-gap, 0.5rem)",
+                padding: "var(--style-card-padding, 0.5rem 0.75rem)",
+                borderRadius: "9999px",
                 ...(step > 2 && {
-                  backgroundColor: "var(--color-primary-600)",
-                  color: "white",
+                  backgroundColor: "var(--color-primary-100)",
+                  color: "var(--color-primary-700)",
                 }),
               }}
             >
-              {step > 2 ? (
-                <Check size={14} strokeWidth={3} />
-              ) : (
-                "2"
-              )}
-            </span>
-            <span
-              className="hidden md:inline"
-              style={{
-                fontSize: "var(--style-body-size, 0.75rem)",
-                fontWeight: "var(--style-body-weight, 500)",
-              }}
-            >
-              Datos del meet
-            </span>
-          </div>
-          <div
-            className={`flex items-center font-medium transition-all ${
-              step === 3
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
-            }`}
-            style={{
-              gap: "var(--style-component-gap, 0.5rem)",
-              padding: "var(--style-card-padding, 0.5rem 0.75rem)",
-              borderRadius: "9999px",
-            }}
-          >
-            <span
-              className={`rounded-full flex items-center justify-center font-bold ${
+              <span
+                className={`rounded-full flex items-center justify-center font-bold ${
+                  step === 2
+                    ? "bg-primary-foreground text-primary"
+                    : step > 2
+                    ? ""
+                    : "bg-background text-foreground"
+                }`}
+                style={{
+                  width: "1.5rem",
+                  height: "1.5rem",
+                  fontSize: "var(--style-body-size, 0.75rem)",
+                  ...(step > 2 && {
+                    backgroundColor: "var(--color-primary-600)",
+                    color: "white",
+                  }),
+                }}
+              >
+                {step > 2 ? <Check size={14} strokeWidth={3} /> : "2"}
+              </span>
+              <span
+                className="hidden md:inline"
+                style={{
+                  fontSize: "var(--style-body-size, 0.75rem)",
+                  fontWeight: "var(--style-body-weight, 500)",
+                }}
+              >
+                Datos del meet
+              </span>
+            </div>
+            <div
+              className={`flex items-center font-medium transition-all ${
                 step === 3
-                  ? "bg-primary-foreground text-primary"
-                  : "bg-background text-foreground"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
               }`}
               style={{
-                width: "1.5rem",
-                height: "1.5rem",
-                fontSize: "var(--style-body-size, 0.75rem)",
+                gap: "var(--style-component-gap, 0.5rem)",
+                padding: "var(--style-card-padding, 0.5rem 0.75rem)",
+                borderRadius: "9999px",
               }}
             >
-              3
-            </span>
-            <span
-              className="hidden md:inline"
-              style={{
-                fontSize: "var(--style-body-size, 0.75rem)",
-                fontWeight: "var(--style-body-weight, 500)",
-              }}
-            >
-              Modo de pago
-            </span>
+              <span
+                className={`rounded-full flex items-center justify-center font-bold ${
+                  step === 3
+                    ? "bg-primary-foreground text-primary"
+                    : "bg-background text-foreground"
+                }`}
+                style={{
+                  width: "1.5rem",
+                  height: "1.5rem",
+                  fontSize: "var(--style-body-size, 0.75rem)",
+                }}
+              >
+                3
+              </span>
+              <span
+                className="hidden md:inline"
+                style={{
+                  fontSize: "var(--style-body-size, 0.75rem)",
+                  fontWeight: "var(--style-body-weight, 500)",
+                }}
+              >
+                Modo de pago
+              </span>
+            </div>
           </div>
         </div>
-      </div>
       )}
 
-      <main 
+      <main
         className="max-w-7xl mx-auto"
         style={{
           padding: "var(--style-container-padding, 2rem 1rem)",
         }}
       >
         {/* Header con mejor jerarquía */}
-        <div 
+        <div
+          className="flex items-start justify-between gap-4"
           style={{
             marginBottom: "var(--style-component-gap, 3rem)",
           }}
         >
-          <h1 
-            className="text-foreground mb-3 tracking-tight"
-            style={{
-              fontSize: "var(--style-title-size, 2.25rem)",
-              fontWeight: "var(--style-title-weight, 700)",
-              letterSpacing: "var(--style-letter-spacing, -0.025em)",
-              lineHeight: "var(--style-line-height, 1.2)",
-            }}
-          >
-            {stepTitles.title}
-          </h1>
-          <p 
-            className="text-muted-foreground"
-            style={{
-              fontSize: "var(--style-subtitle-size, 1.125rem)",
-              fontWeight: "var(--style-subtitle-weight, 400)",
-              letterSpacing: "var(--style-letter-spacing, -0.025em)",
-              lineHeight: "var(--style-line-height, 1.2)",
-            }}
-          >
-            {stepTitles.subtitle}
-          </p>
+          <div className="flex-1">
+            <h1
+              className="text-foreground mb-3 tracking-tight"
+              style={{
+                fontSize: "var(--style-title-size, 2.25rem)",
+                fontWeight: "var(--style-title-weight, 700)",
+                letterSpacing: "var(--style-letter-spacing, -0.025em)",
+                lineHeight: "var(--style-line-height, 1.2)",
+              }}
+            >
+              {stepTitles.title}
+            </h1>
+            <p
+              className="text-muted-foreground"
+              style={{
+                fontSize: "var(--style-subtitle-size, 1.125rem)",
+                fontWeight: "var(--style-subtitle-weight, 400)",
+                letterSpacing: "var(--style-letter-spacing, -0.025em)",
+                lineHeight: "var(--style-line-height, 1.2)",
+              }}
+            >
+              {stepTitles.subtitle}
+            </p>
+          </div>
+          {schedule?.links && schedule.links.length > 0 && (
+            <div className="shrink-0">
+              <SocialLinks links={schedule.links} />
+            </div>
+          )}
         </div>
 
         <section>
-
           {step === 1 && (
             <>
               {scheduleLoading && (
                 <div className="text-center py-8">
-                  <p className="text-gray-500">Cargando configuración del calendario...</p>
+                  <p className="text-gray-500">
+                    Cargando configuración del calendario...
+                  </p>
                 </div>
               )}
               {scheduleError && (
@@ -661,13 +1242,17 @@ function App() {
                   onChangeDate={setValue}
                   selectedSlotHour={selectedSlot?.hour ?? null}
                   selectedSlotMinute={selectedSlot?.minute ?? null}
-                  onSelectSlotHour={(hour, minute = 0) => setSelectedSlot({ hour, minute })}
+                  onSelectSlotHour={(hour, minute = 0) =>
+                    setStoreSelectedSlot({ hour, minute })
+                  }
                   timeSlots={timeSlots}
                   formattedSelection={formattedSelection}
                   canContinue={canContinue}
                   onContinue={handleContinueToForm}
                   enabledDays={schedule.enabledDays}
                   timeSlotVariant={timeSlotVariant}
+                  dateOverrides={combinedDateOverrides}
+                  maxAdvanceBookingMonths={schedule.maxAdvanceBookingMonths}
                 />
               )}
             </>
@@ -680,11 +1265,14 @@ function App() {
               name={name}
               email={email}
               query={query}
+              phone={phone}
               wantsFile={wantsFile}
               file={file}
+              bookingForm={schedule?.bookingForm}
               onChangeName={setName}
               onChangeEmail={setEmail}
               onChangeQuery={setQuery}
+              onChangePhone={setPhone}
               onChangeWantsFile={setWantsFile}
               onChangeFile={setFile}
               onBack={handleBackToCalendar}
@@ -692,18 +1280,20 @@ function App() {
             />
           )}
 
-          {step === 3 && (
-            <KairoStepPayment
-              meetingStart={meetingStart}
-              meetingEnd={meetingEnd}
-              name={name}
-              email={email}
-              paymentMethod={paymentMethod}
-              onChangePaymentMethod={setPaymentMethod}
-              onBack={handleBackToForm}
-              onConfirm={handleConfirmReservation}
-            />
-          )}
+          {step === 3 &&
+            !schedule?.bookingSettings?.confirmCaseBeforePayment && (
+              <KairoStepPayment
+                meetingStart={meetingStart}
+                meetingEnd={meetingEnd}
+                name={name}
+                email={email}
+                paymentMethod={paymentMethod}
+                onChangePaymentMethod={setPaymentMethod}
+                payments={schedule?.payments}
+                onBack={handleBackToForm}
+                onConfirm={handleConfirmReservation}
+              />
+            )}
         </section>
       </main>
 

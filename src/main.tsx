@@ -4,10 +4,42 @@ import "./index.css";
 import App from "./App.tsx";
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { RedirectToLanding } from "./components/RedirectToLanding";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentPending from "./pages/PaymentPending";
+import PaymentFailure from "./pages/PaymentFailure";
+import CaseUnderReview from "./pages/CaseUnderReview";
+
+// Configurar QueryClient
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutos
+    },
+  },
+});
 
 const router = createBrowserRouter([
+  {
+    path: "/payment/success",
+    element: <PaymentSuccess />,
+  },
+  {
+    path: "/payment/pending",
+    element: <PaymentPending />,
+  },
+  {
+    path: "/payment/failure",
+    element: <PaymentFailure />,
+  },
+  {
+    path: "/case-under-review",
+    element: <CaseUnderReview />,
+  },
   {
     path: "/:idCalendario",
     element: <App />,
@@ -20,8 +52,10 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider>
-      <RouterProvider router={router} />
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <RouterProvider router={router} />
+      </ThemeProvider>
+    </QueryClientProvider>
   </StrictMode>
 );
