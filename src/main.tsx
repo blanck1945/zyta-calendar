@@ -1,77 +1,16 @@
-import { StrictMode, lazy, Suspense, Component, type ReactNode } from "react";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import App from "./App.tsx";
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "./contexts/ThemeContext";
-
-// Error Boundary para capturar errores de lazy loading
-class ErrorBoundary extends Component<
-  { children: ReactNode },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: unknown) {
-    console.error("Error boundary caught:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: "2rem", fontFamily: "system-ui" }}>
-          <h1 style={{ color: "red" }}>Error al cargar la aplicación</h1>
-          <pre style={{ background: "#f5f5f5", padding: "1rem", overflow: "auto" }}>
-            {this.state.error?.message || "Error desconocido"}
-            {"\n\n"}
-            {this.state.error?.stack}
-          </pre>
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              padding: "0.5rem 1rem",
-              marginTop: "1rem",
-              cursor: "pointer",
-            }}
-          >
-            Recargar página
-          </button>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
-console.log("🚀 main.tsx: Iniciando aplicación");
-
-// Lazy load de rutas para reducir el bundle inicial y mejorar FCP
-const App = lazy(() => {
-  console.log("⏳ Cargando App.tsx...");
-  return import("./App.tsx").then((module) => {
-    console.log("✅ App.tsx cargado");
-    return module;
-  }).catch((err) => {
-    console.error("❌ Error al cargar App.tsx:", err);
-    throw err;
-  });
-});
-const RedirectToLanding = lazy(() =>
-  import("./components/RedirectToLanding").then((m) => ({ default: m.RedirectToLanding }))
-);
-const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
-const PaymentPending = lazy(() => import("./pages/PaymentPending"));
-const PaymentFailure = lazy(() => import("./pages/PaymentFailure"));
-const CaseUnderReview = lazy(() => import("./pages/CaseUnderReview"));
+import { RedirectToLanding } from "./components/RedirectToLanding";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentPending from "./pages/PaymentPending";
+import PaymentFailure from "./pages/PaymentFailure";
+import CaseUnderReview from "./pages/CaseUnderReview";
 
 // Configurar QueryClient
 const queryClient = new QueryClient({
@@ -83,9 +22,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-console.log("🔧 Creando router...");
-console.log("📍 Ruta actual:", window.location.pathname);
 
 const router = createBrowserRouter([
   {
@@ -114,54 +50,12 @@ const router = createBrowserRouter([
   },
 ]);
 
-const RouteFallback = () => (
-  <div
-    style={{
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "#fff",
-    }}
-  >
-    <div style={{ textAlign: "center" }}>
-      <div
-        style={{
-          width: "48px",
-          height: "48px",
-          border: "4px solid #e5e7eb",
-          borderTopColor: "#3b82f6",
-          borderRadius: "50%",
-          animation: "spin 1s linear infinite",
-          margin: "0 auto 1rem",
-        }}
-      />
-      <p style={{ color: "#6b7280", fontSize: "1rem" }}>Cargando aplicación...</p>
-    </div>
-    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-  </div>
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <RouterProvider router={router} />
+      </ThemeProvider>
+    </QueryClientProvider>
+  </StrictMode>
 );
-
-console.log("🎯 Montando aplicación en #root");
-
-const rootElement = document.getElementById("root");
-if (!rootElement) {
-  console.error("❌ No se encontró #root");
-  document.body.innerHTML = '<div style="padding: 2rem; color: red;">Error: No se encontró el elemento #root</div>';
-} else {
-  console.log("✅ #root encontrado, renderizando...");
-  createRoot(rootElement).render(
-    <StrictMode>
-      <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <Suspense fallback={<RouteFallback />}>
-              <RouterProvider router={router} />
-            </Suspense>
-          </ThemeProvider>
-        </QueryClientProvider>
-      </ErrorBoundary>
-    </StrictMode>
-  );
-  console.log("🎉 Render completado");
-}

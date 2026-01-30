@@ -81,7 +81,7 @@ function createValidationSchema(bookingForm?: BookingForm) {
     });
 
     if (Object.keys(customFieldsSchema).length > 0) {
-      schema = schema.extend(customFieldsSchema) as typeof schema;
+      schema = schema.extend(customFieldsSchema);
     }
   }
 
@@ -704,7 +704,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                                 fontWeight: "var(--style-body-weight, 500)",
                               }}
                             >
-                              {file?.name ?? ""}
+                              {file.name}
                             </span>
                             <button
                               type="button"
@@ -727,7 +727,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                               fontSize: "var(--style-body-size, 0.75rem)",
                             }}
                           >
-                            {((file?.size ?? 0) / 1024).toFixed(2)} KB · Haz clic para
+                            {(file.size / 1024).toFixed(2)} KB · Haz clic para
                             cambiar
                           </span>
                         </>
