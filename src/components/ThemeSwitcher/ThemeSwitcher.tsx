@@ -35,26 +35,26 @@ export const DevMenu: React.FC = () => {
   // Estados para diferentes tipos de fuente
   const [titleFont, setTitleFont] = useState<FontFamilyVariant>(() => {
     const saved = localStorage.getItem("kairo-title-font") as FontFamilyVariant;
-    return saved && FONT_FAMILY_VARIANTS.includes(saved) ? saved : "system";
+    return saved && FONT_FAMILY_VARIANTS.includes(saved) ? saved : "sourceSans";
   });
 
   const [subtitleFont, setSubtitleFont] = useState<FontFamilyVariant>(() => {
     const saved = localStorage.getItem(
       "kairo-subtitle-font"
     ) as FontFamilyVariant;
-    return saved && FONT_FAMILY_VARIANTS.includes(saved) ? saved : "system";
+    return saved && FONT_FAMILY_VARIANTS.includes(saved) ? saved : "sourceSans";
   });
 
   const [buttonFont, setButtonFont] = useState<FontFamilyVariant>(() => {
     const saved = localStorage.getItem(
       "kairo-button-font"
     ) as FontFamilyVariant;
-    return saved && FONT_FAMILY_VARIANTS.includes(saved) ? saved : "system";
+    return saved && FONT_FAMILY_VARIANTS.includes(saved) ? saved : "sourceSans";
   });
 
   const [bodyFont, setBodyFont] = useState<FontFamilyVariant>(() => {
     const saved = localStorage.getItem("kairo-body-font") as FontFamilyVariant;
-    return saved && FONT_FAMILY_VARIANTS.includes(saved) ? saved : "system";
+    return saved && FONT_FAMILY_VARIANTS.includes(saved) ? saved : "sourceSans";
   });
 
   const [timeSlotVariant, setTimeSlotVariant] = useState<TimeSlotVariant>(() => {
@@ -131,7 +131,7 @@ export const DevMenu: React.FC = () => {
     window.dispatchEvent(event);
     
     // Debug en modo dev
-    if (import.meta.env.VITE_ENV === "dev") {
+    if (import.meta.env.DEV) {
       console.log(`🎨 Variante de estilo aplicada: ${styleVariant}`, {
         titleSize: variant.textStyles.titleSize,
         componentGap: variant.layout.componentGap,
@@ -164,7 +164,7 @@ export const DevMenu: React.FC = () => {
   }, [titleFont, subtitleFont, buttonFont, bodyFont]);
 
   // Solo mostrar en modo desarrollo
-  const isDev = import.meta.env.VITE_ENV === "dev";
+  const isDev = import.meta.env.DEV;
 
   if (!isDev) {
     return null;
@@ -177,14 +177,9 @@ export const DevMenu: React.FC = () => {
       icon: "🎨",
     },
     {
-      id: "texts",
-      label: "Textos",
-      icon: "📝",
-    },
-    {
-      id: "numbers",
-      label: "Números",
-      icon: "🔢",
+      id: "typography",
+      label: "Tipografía",
+      icon: "🔤",
     },
     {
       id: "timeslots",
@@ -319,17 +314,20 @@ export const DevMenu: React.FC = () => {
                   </div>
                 )}
 
-                {activeSection === "texts" && (
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-4">
-                      Fuentes para Textos
+                {activeSection === "typography" && (
+                  <div className="space-y-6">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-1">
+                      Tipografía
                     </h3>
                     <p className="text-xs text-gray-500 mb-4">
-                      Selecciona diferentes fuentes para diferentes elementos
-                      del texto. Haz clic en cada elemento para ver las
-                      opciones.
+                      Fuentes para textos y variante para números en horarios.
                     </p>
 
+                    {/* Fuentes para textos */}
+                    <div className="space-y-3">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+                        Fuentes de letra
+                      </p>
                     {/* Título - Acordeón */}
                     <details className="group border border-gray-200 rounded-lg overflow-hidden">
                       <summary className="px-4 py-3 bg-gray-50 cursor-pointer flex items-center justify-between hover:bg-gray-100 transition-colors">
@@ -534,64 +532,57 @@ export const DevMenu: React.FC = () => {
                         </div>
                       </div>
                     </details>
-                  </div>
-                )}
-
-                {activeSection === "numbers" && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                      Variante Tipográfica para Números
-                    </h3>
-                    <p className="text-xs text-gray-500 mb-4">
-                      Selecciona una variante para ver cómo se ven los números
-                      en los horarios (no afecta al calendario).
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {NUMBER_FONT_VARIANTS.map((variant) => (
-                        <button
-                          key={variant}
-                          onClick={() => setNumberFontVariant(variant)}
-                          className={cn(
-                            "px-4 py-2 text-xs font-medium rounded-lg transition-all",
-                            "border-2",
-                            numberFontVariant === variant
-                              ? "bg-primary-600 text-white border-primary-600 shadow-md"
-                              : "bg-white text-gray-700 border-gray-200 hover:border-primary-300 hover:bg-primary-50"
-                          )}
-                        >
-                          {getNumberFontVariantName(variant)}
-                        </button>
-                      ))}
                     </div>
-                    <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <p className="text-xs font-semibold text-gray-700 mb-2">
-                        Vista previa:
+
+                    {/* Variante para números en horarios */}
+                    <div className="pt-4 border-t border-gray-200">
+                      <p className="text-xs font-medium text-gray-600 uppercase tracking-wide mb-3">
+                        Números en horarios
+                      </p>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Cómo se ven los números en los horarios disponibles.
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        <span
-                          className={cn(
-                            "px-3 py-2 bg-white border border-gray-300 rounded text-sm",
-                            `time-slot-number-${numberFontVariant}`
-                          )}
-                        >
-                          9:00 AM - 10:00 AM
-                        </span>
-                        <span
-                          className={cn(
-                            "px-3 py-2 bg-white border border-gray-300 rounded text-sm",
-                            `time-slot-number-${numberFontVariant}`
-                          )}
-                        >
-                          2:30 PM - 3:30 PM
-                        </span>
+                        {NUMBER_FONT_VARIANTS.map((variant) => (
+                          <button
+                            key={variant}
+                            onClick={() => setNumberFontVariant(variant)}
+                            className={cn(
+                              "px-4 py-2 text-xs font-medium rounded-lg transition-all",
+                              "border-2",
+                              numberFontVariant === variant
+                                ? "bg-primary-600 text-white border-primary-600 shadow-md"
+                                : "bg-white text-gray-700 border-gray-200 hover:border-primary-300 hover:bg-primary-50"
+                            )}
+                          >
+                            {getNumberFontVariantName(variant)}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <p className="text-xs font-semibold text-gray-700 mb-2">
+                          Vista previa:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <span
+                            className={cn(
+                              "px-3 py-2 bg-white border border-gray-300 rounded text-sm",
+                              `time-slot-number-${numberFontVariant}`
+                            )}
+                          >
+                            9:00 AM - 10:00 AM
+                          </span>
+                          <span
+                            className={cn(
+                              "px-3 py-2 bg-white border border-gray-300 rounded text-sm",
+                              `time-slot-number-${numberFontVariant}`
+                            )}
+                          >
+                            2:30 PM - 3:30 PM
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <p className="mt-3 text-xs text-gray-500">
-                      Variante actual:{" "}
-                      <strong>
-                        {getNumberFontVariantName(numberFontVariant)}
-                      </strong>
-                    </p>
                   </div>
                 )}
 

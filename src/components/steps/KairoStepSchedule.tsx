@@ -231,7 +231,8 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
                         }
                       }}
                       className={cn(
-                        "border-2 transition-all",
+                        "border-2 transition-all duration-200",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 active:scale-[0.99]",
                         isSelected
                           ? "border-primary bg-primary/5 hover:border-primary hover:bg-primary/5"
                           : "border-border hover:border-primary hover:bg-primary/5"
@@ -290,9 +291,11 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: "0.75rem",
+                  gap: "0.5rem",
                   maxHeight: "60vh",
                   overflowY: "auto",
+                  WebkitOverflowScrolling: "touch",
+                  overscrollBehavior: "contain",
                 }}
               >
                 {formattedTimeSlots.map((slot, index) => {
@@ -309,18 +312,19 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
                       onClick={() => !isDisabled && onSelectSlotHour(slot.hour, slot.minute)}
                       disabled={isDisabled}
                       className={cn(
-                        "w-full border-2 text-left font-mono transition-all",
+                        "w-full border-2 text-left font-mono transition-all duration-200",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2",
                         getNumberFontVariantClass(numberFontVariant),
                         isDisabled
                           ? "border-border/50 bg-muted/30 text-muted-foreground/50 cursor-not-allowed opacity-50"
                           : isSelected
-                          ? "border-primary bg-primary/5 hover:border-primary hover:bg-primary/5 cursor-pointer"
-                          : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer"
+                          ? "border-primary bg-primary/5 hover:border-primary hover:bg-primary/5 cursor-pointer active:scale-[0.99]"
+                          : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer active:scale-[0.99]"
                       )}
                       style={{
-                        padding: "var(--style-card-padding, 1.25rem)",
+                        padding: "0.5rem 0.75rem",
                         borderRadius: "var(--style-border-radius, 0.75rem)",
-                        fontSize: "var(--style-body-size, 1rem)",
+                        fontSize: "var(--style-body-size, 0.9375rem)",
                         fontWeight: "var(--style-body-weight, 400)",
                       }}
                     >

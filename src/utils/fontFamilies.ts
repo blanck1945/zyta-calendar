@@ -1,4 +1,6 @@
 export type FontFamilyVariant =
+  | "sourceSans"
+  | "inter"
   | "system"
   | "serif"
   | "mono"
@@ -7,6 +9,8 @@ export type FontFamilyVariant =
   | "handwriting";
 
 export const FONT_FAMILY_VARIANTS: FontFamilyVariant[] = [
+  "sourceSans",
+  "inter",
   "system",
   "serif",
   "mono",
@@ -19,6 +23,28 @@ export const FONT_FAMILY_CONFIG: Record<
   FontFamilyVariant,
   { name: string; families: string[] }
 > = {
+  sourceSans: {
+    name: "Source Sans 3",
+    families: [
+      '"Source Sans 3"',
+      "system-ui",
+      "-apple-system",
+      "BlinkMacSystemFont",
+      '"Segoe UI"',
+      "sans-serif",
+    ],
+  },
+  inter: {
+    name: "Inter",
+    families: [
+      '"Inter"',
+      "system-ui",
+      "-apple-system",
+      "BlinkMacSystemFont",
+      '"Segoe UI"',
+      "sans-serif",
+    ],
+  },
   system: {
     name: "Sistema",
     families: [

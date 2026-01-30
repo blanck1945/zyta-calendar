@@ -122,16 +122,22 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Variables CSS para fuentes (inicializadas con valores por defecto) */
+/* Transiciones suaves en inputs y textareas */
+input:not([type="checkbox"]):not([type="radio"]),
+textarea {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Variables CSS para fuentes (Source Sans 3 por defecto, profesional) */
 :root {
-  --font-title: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  --font-subtitle: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-button: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  --font-title: "Source Sans 3", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  --font-subtitle: "Source Sans 3", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  --font-button: "Source Sans 3", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  --font-body: "Source Sans 3", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 }
 
 /* Clase para el fondo dinámico de la aplicación */
@@ -149,6 +155,9 @@ body {
   scrollbar-width: thin;
   /* Para temas oscuros, usar colores más claros */
   scrollbar-color: var(--color-secondary-400) var(--color-secondary-50);
+  /* Mejoras de compatibilidad para Safari Mac */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* Webkit browsers (Chrome, Safari, Edge) */

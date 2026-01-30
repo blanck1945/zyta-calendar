@@ -1,6 +1,6 @@
 // src/App.tsx
 import { useMemo, useEffect, useRef, useState, lazy, Suspense } from "react";
-import { Check } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useYourIdAuth } from "./sdk/useYourIDAuth";
 import KairoStepSchedule, {
   type TimeSlot,
@@ -359,7 +359,7 @@ function App() {
 
   // Mostrar warning en consola si no hay professionalId (solo en dev)
   useEffect(() => {
-    if (import.meta.env.VITE_ENV === "dev" && !professionalId) {
+    if (import.meta.env.DEV && !professionalId) {
       console.warn(
         "⚠️ No se encontró professionalId. Opciones:\n" +
           "1. URL: /calendar/:professionalId\n" +
@@ -904,6 +904,9 @@ function App() {
     setStoreTimeSlotVariant(timeSlotVariant);
   }, [timeSlotVariant, setStoreTimeSlotVariant]);
 
+  // Loading de confirmación (declarado antes para usarlo en handleContinueToPayment)
+  const [isConfirmingReservation, setIsConfirmingReservation] = useState(false);
+
   const handleContinueToPayment = async () => {
     // Si confirmCaseBeforePayment es true, crear la cita y redirigir a la página de caso en análisis
     if (schedule?.bookingSettings?.confirmCaseBeforePayment) {
@@ -919,6 +922,7 @@ function App() {
         return;
       }
 
+      setIsConfirmingReservation(true);
       try {
         // Crear la cita con método de pago "cash" por defecto (o el que corresponda)
         // El backend puede manejar el estado cuando confirmCaseBeforePayment es true
@@ -961,8 +965,7 @@ function App() {
         window.location.href = url;
       } catch (err) {
         console.error("Error al crear la cita:", err);
-        // Aquí podrías mostrar un mensaje de error al usuario
-        // Por ahora no redirigimos si hay error
+        setIsConfirmingReservation(false);
       }
       return;
     }
@@ -979,6 +982,11 @@ function App() {
   // Hook para crear appointment
   const createAppointmentMutation = useCreateAppointment();
 
+  const isConfirming =
+    isConfirmingReservation ||
+    createAppointmentMutation.isPending ||
+    createPreferenceMutation.isPending;
+
   const handleConfirmReservation = async () => {
     if (!meetingStart || !meetingEnd || !paymentMethod || !name || !email)
       return;
@@ -990,7 +998,9 @@ function App() {
       return;
     }
 
-    // Crear la cita primero
+    // Mostrar loading de inmediato (antes de cualquier async)
+    setIsConfirmingReservation(true);
+
     try {
       const appointment = await createAppointmentMutation.mutateAsync({
         calendarSlug,
@@ -1023,24 +1033,38 @@ function App() {
             pendingUrl,
           });
 
-          // 🚀 REDIRECCIÓN A MERCADO PAGO
-          // Resetear el store antes de redirigir
+          // Redirigir a Mercado Pago (reset después de preparar la redirección)
           resetBooking();
           window.location.href = data.initPoint;
         } catch (err) {
           console.error("Error al crear preferencia MP", err);
-          // Aquí podrías mostrar un mensaje de error al usuario
+          setIsConfirmingReservation(false);
         }
       } else if (paymentMethod === "transfer" || paymentMethod === "cash" || paymentMethod === "coordinar") {
-        // Para transfer y cash, la cita ya está creada
-        // Los datos de pago ya se muestran en el componente
-        console.log("Reserva confirmada con método:", paymentMethod);
-        // Resetear el store después de confirmar
+        // Guardar datos para la página de confirmación y redirigir
+        const bookingData = {
+          appointmentId: appointment.id,
+          calendarSlug,
+          clientName: name,
+          clientEmail: email,
+          startTime: meetingStart.toISOString(),
+          endTime: meetingEnd?.toISOString(),
+          paymentMethod,
+          confirmedAt: new Date().toISOString(),
+        };
+        localStorage.setItem("lastBooking", JSON.stringify(bookingData));
+
+        const params = new URLSearchParams({
+          calendarSlug,
+          method: paymentMethod,
+          name: encodeURIComponent(name),
+        });
         resetBooking();
+        window.location.href = `/payment/success?${params.toString()}`;
       }
     } catch (err) {
       console.error("Error al crear la cita:", err);
-      // Aquí podrías mostrar un mensaje de error al usuario
+      setIsConfirmingReservation(false);
     }
   };
 
@@ -1098,160 +1122,32 @@ function App() {
   }, [step, name, paymentMethod, step1Title, step1Subtitle]);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Stepper mejorado - posición fixed fuera del flujo principal */}
-      {/* Comentado temporalmente - componente no eliminado */}
-      {false && (
+    <div className="min-h-screen bg-background relative">
+      {/* Overlay de carga al confirmar reserva: evita ver el calendario antes de la redirección */}
+      {isConfirming && (
         <div
-          className="fixed top-4 right-4 z-50"
-          style={{
-            maxWidth: "calc(100vw - 2rem)",
-          }}
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-background/95 backdrop-blur-sm"
+          aria-live="polite"
+          aria-busy="true"
         >
-          <div
-            className="flex items-center flex-wrap gap-2"
+          <Loader2
+            className="h-12 w-12 animate-spin text-primary"
+            aria-hidden
+          />
+          <p
+            className="text-lg font-medium text-foreground"
             style={{
-              gap: "var(--style-component-gap, 0.5rem)",
-              boxShadow:
-                "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-              borderRadius: "9999px",
-              padding: "0.5rem",
-              backgroundColor: "var(--background)",
+              fontSize: "var(--style-body-size, 1rem)",
+              fontWeight: "var(--style-body-weight, 500)",
             }}
           >
-            <div
-              className={`flex items-center font-medium transition-all ${
-                step === 1
-                  ? "bg-primary text-primary-foreground"
-                  : step > 1
-                  ? ""
-                  : "bg-muted text-muted-foreground"
-              }`}
-              style={{
-                gap: "var(--style-component-gap, 0.5rem)",
-                padding: "var(--style-card-padding, 0.5rem 0.75rem)",
-                borderRadius: "9999px",
-                ...(step > 1 && {
-                  backgroundColor: "var(--color-primary-100)",
-                  color: "var(--color-primary-700)",
-                }),
-              }}
-            >
-              <span
-                className={`rounded-full flex items-center justify-center font-bold ${
-                  step === 1
-                    ? "bg-primary-foreground text-primary"
-                    : step > 1
-                    ? ""
-                    : "bg-background text-foreground"
-                }`}
-                style={{
-                  width: "1.5rem",
-                  height: "1.5rem",
-                  fontSize: "var(--style-body-size, 0.75rem)",
-                  ...(step > 1 && {
-                    backgroundColor: "var(--color-primary-600)",
-                    color: "white",
-                  }),
-                }}
-              >
-                {step > 1 ? <Check size={14} strokeWidth={3} /> : "1"}
-              </span>
-              <span
-                className="hidden md:inline"
-                style={{
-                  fontSize: "var(--style-body-size, 0.75rem)",
-                  fontWeight: "var(--style-body-weight, 500)",
-                }}
-              >
-                Fecha y horario
-              </span>
-            </div>
-            <div
-              className={`flex items-center font-medium transition-all ${
-                step === 2
-                  ? "bg-primary text-primary-foreground"
-                  : step > 2
-                  ? ""
-                  : "bg-muted text-muted-foreground"
-              }`}
-              style={{
-                gap: "var(--style-component-gap, 0.5rem)",
-                padding: "var(--style-card-padding, 0.5rem 0.75rem)",
-                borderRadius: "9999px",
-                ...(step > 2 && {
-                  backgroundColor: "var(--color-primary-100)",
-                  color: "var(--color-primary-700)",
-                }),
-              }}
-            >
-              <span
-                className={`rounded-full flex items-center justify-center font-bold ${
-                  step === 2
-                    ? "bg-primary-foreground text-primary"
-                    : step > 2
-                    ? ""
-                    : "bg-background text-foreground"
-                }`}
-                style={{
-                  width: "1.5rem",
-                  height: "1.5rem",
-                  fontSize: "var(--style-body-size, 0.75rem)",
-                  ...(step > 2 && {
-                    backgroundColor: "var(--color-primary-600)",
-                    color: "white",
-                  }),
-                }}
-              >
-                {step > 2 ? <Check size={14} strokeWidth={3} /> : "2"}
-              </span>
-              <span
-                className="hidden md:inline"
-                style={{
-                  fontSize: "var(--style-body-size, 0.75rem)",
-                  fontWeight: "var(--style-body-weight, 500)",
-                }}
-              >
-                Datos del meet
-              </span>
-            </div>
-            <div
-              className={`flex items-center font-medium transition-all ${
-                step === 3
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
-              style={{
-                gap: "var(--style-component-gap, 0.5rem)",
-                padding: "var(--style-card-padding, 0.5rem 0.75rem)",
-                borderRadius: "9999px",
-              }}
-            >
-              <span
-                className={`rounded-full flex items-center justify-center font-bold ${
-                  step === 3
-                    ? "bg-primary-foreground text-primary"
-                    : "bg-background text-foreground"
-                }`}
-                style={{
-                  width: "1.5rem",
-                  height: "1.5rem",
-                  fontSize: "var(--style-body-size, 0.75rem)",
-                }}
-              >
-                3
-              </span>
-              <span
-                className="hidden md:inline"
-                style={{
-                  fontSize: "var(--style-body-size, 0.75rem)",
-                  fontWeight: "var(--style-body-weight, 500)",
-                }}
-              >
-                Modo de pago
-              </span>
-            </div>
-          </div>
+            {createPreferenceMutation.isPending
+              ? "Redirigiendo a Mercado Pago..."
+              : "Confirmando tu reserva..."}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            No cierres esta ventana
+          </p>
         </div>
       )}
 
@@ -1298,6 +1194,66 @@ function App() {
             </div>
           )}
         </div>
+
+        {/* Botones de prueba para desarrollo - Solo visibles en DEV */}
+        {import.meta.env.DEV && (
+          <div className="mb-4 p-4 bg-yellow-100 border-2 border-yellow-400 rounded-lg">
+            <p className="text-sm font-semibold text-yellow-900 mb-2">🛠️ Modo Desarrollo - Botones de Prueba</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => {
+                  // Simular datos de reserva exitosa
+                  const testBookingData = {
+                    appointmentId: "test-123",
+                    calendarSlug: schedule?.calendarSlug || "test-calendar",
+                    clientName: "Usuario de Prueba",
+                    clientEmail: "test@ejemplo.com",
+                    startTime: new Date().toISOString(),
+                    endTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+                    paymentMethod: "mercadopago",
+                    confirmedAt: new Date().toISOString(),
+                  };
+                  localStorage.setItem("lastBooking", JSON.stringify(testBookingData));
+                  window.location.href = `/payment/success?calendarSlug=${schedule?.calendarSlug || "test"}&method=mercadopago&name=Usuario%20de%20Prueba`;
+                }}
+                className="px-3 py-2 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700"
+              >
+                Ver Payment Success
+              </button>
+              <button
+                onClick={() => {
+                  const testFormData = {
+                    name: "Usuario de Prueba",
+                    email: "test@ejemplo.com",
+                    phone: "+54 11 1234-5678",
+                    query: "Esta es una consulta de prueba para verificar el diseño.",
+                  };
+                  localStorage.setItem("bookingFormData", JSON.stringify(testFormData));
+                  window.location.href = `/case-under-review?calendarSlug=${schedule?.calendarSlug || "test"}&userName=Usuario%20de%20Prueba`;
+                }}
+                className="px-3 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700"
+              >
+                Ver Case Under Review
+              </button>
+              <button
+                onClick={() => {
+                  window.location.href = `/payment/pending?calendarSlug=${schedule?.calendarSlug || "test"}`;
+                }}
+                className="px-3 py-2 bg-yellow-600 text-white rounded text-sm font-medium hover:bg-yellow-700"
+              >
+                Ver Payment Pending
+              </button>
+              <button
+                onClick={() => {
+                  window.location.href = `/payment/failure?calendarSlug=${schedule?.calendarSlug || "test"}`;
+                }}
+                className="px-3 py-2 bg-red-600 text-white rounded text-sm font-medium hover:bg-red-700"
+              >
+                Ver Payment Failure
+              </button>
+            </div>
+          </div>
+        )}
 
         <section>
           {step === 1 && (
@@ -1393,10 +1349,12 @@ function App() {
         </section>
       </main>
 
-      {/* Barra inferior para cambiar tema (debug/testing) — lazy para no bloquear first paint */}
-      <Suspense fallback={null}>
-        <ThemeSwitcher />
-      </Suspense>
+      {/* Menú de desarrollo: solo en dev (no se monta en producción) */}
+      {import.meta.env.DEV && (
+        <Suspense fallback={null}>
+          <ThemeSwitcher />
+        </Suspense>
+      )}
     </div>
   );
 }

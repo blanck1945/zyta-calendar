@@ -1,11 +1,10 @@
 import { useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 import { Clock } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 
 export default function PaymentPending() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const calendarSlug = searchParams.get("calendarSlug");
 
@@ -15,10 +14,12 @@ export default function PaymentPending() {
   }, []);
 
   const handleGoBack = () => {
+    // Redirigir al calendario o a la landing
     if (calendarSlug) {
-      navigate(`/${calendarSlug}`);
+      window.location.href = `/${calendarSlug}`;
     } else {
-      navigate("/");
+      const landingUrl = import.meta.env.VITE_LANDING_URL || "https://zyta-landing.vercel.app/";
+      window.location.href = landingUrl;
     }
   };
 

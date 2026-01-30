@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 import { Clock, Info, User, Mail, Phone, MessageSquare } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -14,7 +14,6 @@ interface FormData {
 }
 
 export default function CaseUnderReview() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const calendarSlug = searchParams.get("calendarSlug");
   const userNameParam = searchParams.get("userName");
@@ -40,10 +39,12 @@ export default function CaseUnderReview() {
   }, []);
 
   const handleGoBack = () => {
+    // Redirigir al calendario o a la landing
     if (calendarSlug) {
-      navigate(`/${calendarSlug}`);
+      window.location.href = `/${calendarSlug}`;
     } else {
-      navigate("/");
+      const landingUrl = import.meta.env.VITE_LANDING_URL || "https://zyta-landing.vercel.app/";
+      window.location.href = landingUrl;
     }
   };
 

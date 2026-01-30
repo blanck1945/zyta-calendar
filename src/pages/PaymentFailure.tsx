@@ -1,11 +1,10 @@
 import { useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 import { XCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 
 export default function PaymentFailure() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const calendarSlug = searchParams.get("calendarSlug");
   const paymentId = searchParams.get("payment_id");
@@ -19,11 +18,18 @@ export default function PaymentFailure() {
   }, [paymentId, status]);
 
   const handleRetry = () => {
+    // Redirigir al calendario o a la landing
     if (calendarSlug) {
-      navigate(`/${calendarSlug}`);
+      window.location.href = `/${calendarSlug}`;
     } else {
-      navigate("/");
+      const landingUrl = import.meta.env.VITE_LANDING_URL || "https://zyta-landing.vercel.app/";
+      window.location.href = landingUrl;
     }
+  };
+
+  const handleGoHome = () => {
+    const landingUrl = import.meta.env.VITE_LANDING_URL || "https://zyta-landing.vercel.app/";
+    window.location.href = landingUrl;
   };
 
   return (
@@ -57,7 +63,7 @@ export default function PaymentFailure() {
             Intentar nuevamente
           </Button>
           <Button 
-            onClick={() => navigate("/")} 
+            onClick={handleGoHome} 
             size="lg" 
             variant="outline" 
             className="w-full sm:w-auto"

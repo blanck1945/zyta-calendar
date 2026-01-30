@@ -144,6 +144,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
               onClick={() => onChangePaymentMethod("cash")}
               className={`
                 text-left border-2 transition-all duration-200 flex flex-col shadow-sm cursor-pointer
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 active:scale-[0.99]
                 ${
                   paymentMethod === "cash"
                     ? "border-primary bg-primary/5 shadow-md"
@@ -184,6 +185,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
               onClick={() => onChangePaymentMethod("transfer")}
               className={`
                 text-left border-2 transition-all duration-200 flex flex-col shadow-sm cursor-pointer
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 active:scale-[0.99]
                 ${
                   paymentMethod === "transfer"
                     ? "border-primary bg-primary/5 shadow-md"
@@ -224,6 +226,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
               onClick={() => onChangePaymentMethod("mercadopago")}
               className={`
                 text-left border-2 transition-all duration-200 flex flex-col shadow-sm cursor-pointer
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 active:scale-[0.99]
                 ${
                   paymentMethod === "mercadopago"
                     ? "border-primary bg-primary/5 shadow-md"
@@ -264,6 +267,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
               onClick={() => onChangePaymentMethod("coordinar")}
               className={`
                 text-left border-2 transition-all duration-200 flex flex-col shadow-sm cursor-pointer
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 active:scale-[0.99]
                 ${
                   paymentMethod === "coordinar"
                     ? "border-primary bg-primary/5 shadow-md"
