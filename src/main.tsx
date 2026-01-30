@@ -52,8 +52,19 @@ class ErrorBoundary extends Component<
   }
 }
 
+console.log("🚀 main.tsx: Iniciando aplicación");
+
 // Lazy load de rutas para reducir el bundle inicial y mejorar FCP
-const App = lazy(() => import("./App.tsx"));
+const App = lazy(() => {
+  console.log("⏳ Cargando App.tsx...");
+  return import("./App.tsx").then((module) => {
+    console.log("✅ App.tsx cargado");
+    return module;
+  }).catch((err) => {
+    console.error("❌ Error al cargar App.tsx:", err);
+    throw err;
+  });
+});
 const RedirectToLanding = lazy(() =>
   import("./components/RedirectToLanding").then((m) => ({ default: m.RedirectToLanding }))
 );
@@ -72,6 +83,9 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+console.log("🔧 Creando router...");
+console.log("📍 Ruta actual:", window.location.pathname);
 
 const router = createBrowserRouter([
   {
@@ -128,10 +142,14 @@ const RouteFallback = () => (
   </div>
 );
 
+console.log("🎯 Montando aplicación en #root");
+
 const rootElement = document.getElementById("root");
 if (!rootElement) {
+  console.error("❌ No se encontró #root");
   document.body.innerHTML = '<div style="padding: 2rem; color: red;">Error: No se encontró el elemento #root</div>';
 } else {
+  console.log("✅ #root encontrado, renderizando...");
   createRoot(rootElement).render(
     <StrictMode>
       <ErrorBoundary>
@@ -145,4 +163,5 @@ if (!rootElement) {
       </ErrorBoundary>
     </StrictMode>
   );
+  console.log("🎉 Render completado");
 }
