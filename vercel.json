@@ -1,12 +1,5 @@
 {
-  "routes": [
-    {
-      "src": "^/(payment|case-under-review)(.*)",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
