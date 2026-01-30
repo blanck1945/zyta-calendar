@@ -1,5 +1,8 @@
 // src/components/steps/KairoStepForm.tsx
-import { useState, type FormEvent } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Calendar, Clock, User, Mail, MessageSquare, Upload, File, X, Phone, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
@@ -15,6 +18,7 @@ interface KairoStepFormProps {
   phone: string;
   wantsFile: boolean;
   file: File | null;
+  customFields?: Record<string, string>;
 
   bookingForm?: BookingForm;
   confirmCaseBeforePayment?: boolean;
@@ -26,10 +30,65 @@ interface KairoStepFormProps {
   onChangePhone: (v: string) => void;
   onChangeWantsFile: (v: boolean) => void;
   onChangeFile: (file: File | null) => void;
+  onChangeCustomFields?: (fields: Record<string, string>) => void;
 
   onBack: () => void;
   onContinue: () => void;
 }
+
+// Función para crear el esquema de validación dinámicamente basado en bookingForm
+function createValidationSchema(bookingForm?: BookingForm) {
+  const nameField = bookingForm?.fields?.name ?? { enabled: true, required: true };
+  const emailField = bookingForm?.fields?.email ?? { enabled: true, required: true };
+  const notesField = bookingForm?.fields?.notes ?? { enabled: true, required: false };
+  const phoneField = bookingForm?.fields?.phone ?? { enabled: false, required: false };
+
+  let schema = z.object({
+    name: nameField.enabled
+      ? nameField.required
+        ? z.string().min(1, "El nombre es requerido").trim()
+        : z.string().optional()
+      : z.string().optional(),
+    email: emailField.enabled
+      ? emailField.required
+        ? z.string().email("El email no es válido").min(1, "El email es requerido")
+        : z.string().email("El email no es válido").optional().or(z.literal(""))
+      : z.string().optional(),
+    query: notesField.enabled
+      ? notesField.required
+        ? z.string().min(1, "Este campo es requerido").trim()
+        : z.string().optional()
+      : z.string().optional(),
+    phone: phoneField.enabled
+      ? phoneField.required
+        ? z.string().min(1, "El teléfono es requerido").trim()
+        : z.string().optional()
+      : z.string().optional(),
+  });
+
+  // Agregar validación para customFields
+  if (bookingForm?.customFields && bookingForm.customFields.length > 0) {
+    const customFieldsSchema: Record<string, z.ZodTypeAny> = {};
+    
+    bookingForm.customFields.forEach((field) => {
+      if (field.enabled) {
+        if (field.required) {
+          customFieldsSchema[field.id] = z.string().min(1, `${field.label} es requerido`);
+        } else {
+          customFieldsSchema[field.id] = z.string().optional();
+        }
+      }
+    });
+
+    if (Object.keys(customFieldsSchema).length > 0) {
+      schema = schema.extend(customFieldsSchema);
+    }
+  }
+
+  return schema;
+}
+
+type FormData = z.infer<ReturnType<typeof createValidationSchema>>;
 
 const KairoStepForm: React.FC<KairoStepFormProps> = ({
   meetingStart,
@@ -40,6 +99,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
   phone,
   wantsFile,
   file,
+  customFields = {},
   bookingForm,
   confirmCaseBeforePayment = false,
   isLoading = false,
@@ -49,61 +109,106 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
   onChangePhone,
   onChangeWantsFile,
   onChangeFile,
+  onChangeCustomFields,
   onBack,
   onContinue,
 }) => {
-  // Estado para errores de validación
-  const [errors, setErrors] = useState<{
-    name?: string;
-    email?: string;
-    notes?: string;
-    phone?: string;
-  }>({});
+  const validationSchema = createValidationSchema(bookingForm);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid },
+    watch,
+    setValue,
+  } = useForm<FormData>({
+    resolver: zodResolver(validationSchema),
+    mode: "onChange",
+    defaultValues: {
+      name: name || "",
+      email: email || "",
+      query: query || "",
+      phone: phone || "",
+      ...customFields,
+    },
+  });
 
-  // Obtener configuración de campos (con valores por defecto si no hay bookingForm)
-  const nameField = bookingForm?.fields?.name ?? { enabled: true, required: true };
-  const emailField = bookingForm?.fields?.email ?? { enabled: true, required: true };
-  const notesField = bookingForm?.fields?.notes ?? { enabled: true, required: false };
-  const phoneField = bookingForm?.fields?.phone ?? { enabled: false, required: false };
-
-  // Función de validación
-  const validateForm = (): boolean => {
-    const newErrors: typeof errors = {};
-
-    // Validar nombre
-    if (nameField.enabled && nameField.required && !name.trim()) {
-      newErrors.name = "El nombre es requerido";
-    }
-
-    // Validar email
-    if (emailField.enabled && emailField.required) {
-      if (!email.trim()) {
-        newErrors.email = "El email es requerido";
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        newErrors.email = "El email no es válido";
-      }
-    }
-
-    // Validar notas
-    if (notesField.enabled && notesField.required && !query.trim()) {
-      newErrors.notes = "Este campo es requerido";
-    }
-
-    // Validar teléfono
-    if (phoneField.enabled && phoneField.required && !phone.trim()) {
-      newErrors.phone = "El teléfono es requerido";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
+  // Sincronizar valores del formulario con el estado externo
+  useEffect(() => {
+    setValue("name", name);
+    setValue("email", email);
+    setValue("query", query);
+    setValue("phone", phone);
     
-    if (validateForm()) {
-      onContinue();
+    // Sincronizar customFields
+    if (bookingForm?.customFields) {
+      bookingForm.customFields.forEach((field) => {
+        if (field.enabled && customFields[field.id]) {
+          setValue(field.id as keyof FormData, customFields[field.id]);
+        }
+      });
     }
+  }, [name, email, query, phone, customFields, setValue, bookingForm]);
+
+  // Observar cambios en los campos y actualizar el estado externo
+  const watchedName = watch("name");
+  const watchedEmail = watch("email");
+  const watchedQuery = watch("query");
+  const watchedPhone = watch("phone");
+
+  useEffect(() => {
+    if (watchedName !== undefined) onChangeName(watchedName || "");
+  }, [watchedName, onChangeName]);
+
+  useEffect(() => {
+    if (watchedEmail !== undefined) onChangeEmail(watchedEmail || "");
+  }, [watchedEmail, onChangeEmail]);
+
+  useEffect(() => {
+    if (watchedQuery !== undefined) onChangeQuery(watchedQuery || "");
+  }, [watchedQuery, onChangeQuery]);
+
+  useEffect(() => {
+    if (watchedPhone !== undefined) onChangePhone(watchedPhone || "");
+  }, [watchedPhone, onChangePhone]);
+
+  // Observar cambios en customFields
+  useEffect(() => {
+    if (!onChangeCustomFields || !bookingForm?.customFields) return;
+    
+    const customFieldsValues: Record<string, string> = {};
+    bookingForm.customFields.forEach((field) => {
+      if (field.enabled) {
+        const value = watch(field.id as keyof FormData);
+        if (value) {
+          customFieldsValues[field.id] = value as string;
+        }
+      }
+    });
+
+    if (Object.keys(customFieldsValues).length > 0 || Object.keys(customFields).length > 0) {
+      onChangeCustomFields(customFieldsValues);
+    }
+  }, [watch, bookingForm, onChangeCustomFields, customFields]);
+
+  const onSubmit = (data: FormData) => {
+    // Actualizar todos los valores antes de continuar
+    onChangeName(data.name || "");
+    onChangeEmail(data.email || "");
+    onChangeQuery(data.query || "");
+    onChangePhone(data.phone || "");
+    
+    // Actualizar customFields
+    if (onChangeCustomFields && bookingForm?.customFields) {
+      const customFieldsValues: Record<string, string> = {};
+      bookingForm.customFields.forEach((field) => {
+        if (field.enabled && data[field.id as keyof FormData]) {
+          customFieldsValues[field.id] = data[field.id as keyof FormData] as string;
+        }
+      });
+      onChangeCustomFields(customFieldsValues);
+    }
+    
+    onContinue();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,48 +216,11 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
     onChangeFile(f);
   };
 
-  // Función para verificar si el formulario es válido (sin mostrar errores)
-  const isFormValid = (): boolean => {
-    if (nameField.enabled && nameField.required && !name.trim()) return false;
-    if (emailField.enabled && emailField.required) {
-      if (!email.trim()) return false;
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
-    }
-    if (notesField.enabled && notesField.required && !query.trim()) return false;
-    if (phoneField.enabled && phoneField.required && !phone.trim()) return false;
-    return true;
-  };
-
-  // Limpiar error cuando el usuario empieza a escribir
-  const handleNameChange = (value: string) => {
-    onChangeName(value);
-    if (errors.name) {
-      setErrors((prev) => ({ ...prev, name: undefined }));
-    }
-  };
-
-  const handleEmailChange = (value: string) => {
-    onChangeEmail(value);
-    if (errors.email) {
-      setErrors((prev) => ({ ...prev, email: undefined }));
-    }
-  };
-
-  const handleQueryChange = (value: string) => {
-    onChangeQuery(value);
-    if (errors.notes) {
-      setErrors((prev) => ({ ...prev, notes: undefined }));
-    }
-  };
-
-  const handlePhoneChange = (value: string) => {
-    onChangePhone(value);
-    if (errors.phone) {
-      setErrors((prev) => ({ ...prev, phone: undefined }));
-    }
-  };
-
-  const canContinue = isFormValid();
+  // Obtener configuración de campos
+  const nameField = bookingForm?.fields?.name ?? { enabled: true, required: true };
+  const emailField = bookingForm?.fields?.email ?? { enabled: true, required: true };
+  const notesField = bookingForm?.fields?.notes ?? { enabled: true, required: false };
+  const phoneField = bookingForm?.fields?.phone ?? { enabled: false, required: false };
 
   return (
     <>
@@ -165,7 +233,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
       >
         <div className="flex items-start gap-3">
           <div
-            className="flex-shrink-0 rounded-full p-2"
+            className="shrink-0 rounded-full p-2"
             style={{
               backgroundColor: "var(--primary)",
               color: "var(--primary-foreground)",
@@ -242,7 +310,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
 
       <form
         className="max-w-xl"
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit(onSubmit)}
         noValidate
         style={{
           display: "flex",
@@ -278,8 +346,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
               <input
                 id="name"
                 type="text"
-                value={name}
-                onChange={(e) => handleNameChange(e.target.value)}
+                {...register("name")}
                 className={`w-full border-2 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
                   errors.name
                     ? "border-destructive focus:border-destructive"
@@ -292,9 +359,6 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                   fontWeight: "var(--style-body-weight, 400)",
                 }}
                 placeholder="Tu nombre completo"
-                required={nameField.required}
-                aria-invalid={errors.name ? "true" : "false"}
-                aria-describedby={errors.name ? "name-error" : undefined}
               />
               {errors.name && (
                 <div
@@ -303,7 +367,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                   role="alert"
                 >
                   <AlertCircle className="h-3.5 w-3.5" />
-                  <span>{errors.name}</span>
+                  <span>{errors.name.message}</span>
                 </div>
               )}
             </div>
@@ -331,8 +395,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
               <input
                 id="email"
                 type="email"
-                value={email}
-                onChange={(e) => handleEmailChange(e.target.value)}
+                {...register("email")}
                 className={`w-full border-2 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
                   errors.email
                     ? "border-destructive focus:border-destructive"
@@ -345,9 +408,6 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                   fontWeight: "var(--style-body-weight, 400)",
                 }}
                 placeholder="tu@email.com"
-                required={emailField.required}
-                aria-invalid={errors.email ? "true" : "false"}
-                aria-describedby={errors.email ? "email-error" : undefined}
               />
               {errors.email && (
                 <div
@@ -356,7 +416,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                   role="alert"
                 >
                   <AlertCircle className="h-3.5 w-3.5" />
-                  <span>{errors.email}</span>
+                  <span>{errors.email.message}</span>
                 </div>
               )}
             </div>
@@ -384,8 +444,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
               <input
                 id="phone"
                 type="tel"
-                value={phone}
-                onChange={(e) => handlePhoneChange(e.target.value)}
+                {...register("phone")}
                 className={`w-full border-2 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
                   errors.phone
                     ? "border-destructive focus:border-destructive"
@@ -398,9 +457,6 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                   fontWeight: "var(--style-body-weight, 400)",
                 }}
                 placeholder="+54 9 11 1234-5678"
-                required={phoneField.required}
-                aria-invalid={errors.phone ? "true" : "false"}
-                aria-describedby={errors.phone ? "phone-error" : undefined}
               />
               {errors.phone && (
                 <div
@@ -409,7 +465,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                   role="alert"
                 >
                   <AlertCircle className="h-3.5 w-3.5" />
-                  <span>{errors.phone}</span>
+                  <span>{errors.phone.message}</span>
                 </div>
               )}
             </div>
@@ -437,11 +493,10 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
             </label>
             <textarea
               id="query"
-              value={query}
-              onChange={(e) => handleQueryChange(e.target.value)}
+              {...register("query")}
               rows={5}
               className={`w-full border-2 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none transition-all ${
-                errors.notes
+                errors.query
                   ? "border-destructive focus:border-destructive"
                   : "border-input focus:border-ring"
               }`}
@@ -453,175 +508,259 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                 lineHeight: "1.5",
               }}
               placeholder="Contanos brevemente el motivo del meet..."
-              required={notesField.required}
-              aria-invalid={errors.notes ? "true" : "false"}
-              aria-describedby={errors.notes ? "notes-error" : undefined}
             />
-            {errors.notes && (
+            {errors.query && (
               <div
-                id="notes-error"
+                id="query-error"
                 className="flex items-center gap-1.5 text-destructive text-sm"
                 role="alert"
               >
                 <AlertCircle className="h-3.5 w-3.5" />
-                <span>{errors.notes}</span>
+                <span>{errors.query.message}</span>
               </div>
             )}
           </div>
         )}
 
-        {/* Checkbox para subir archivo */}
-        <Card
-          className="cursor-pointer transition-all hover:border-primary/50"
-          style={{
-            padding: "var(--style-card-padding, 1rem)",
-            borderWidth: "2px",
-            borderStyle: "solid",
-            borderColor: wantsFile
-              ? "var(--primary)"
-              : "var(--border)",
-            backgroundColor: wantsFile
-              ? "var(--primary)/5"
-              : "transparent",
-          }}
-          onClick={() => onChangeWantsFile(!wantsFile)}
-        >
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 mt-0.5">
-              <input
-                id="wantsFile"
-                type="checkbox"
-                checked={wantsFile}
-                onChange={(e) => onChangeWantsFile(e.target.checked)}
-                className="h-5 w-5 cursor-pointer accent-primary"
-                style={{
-                  borderRadius: "var(--style-border-radius, 0.25rem)",
-                }}
-              />
-            </div>
-            <label
-              htmlFor="wantsFile"
-              className="flex-1 text-foreground select-none cursor-pointer"
-              style={{
-                fontSize: "var(--style-body-size, 0.875rem)",
-                fontWeight: "var(--style-body-weight, 400)",
-              }}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <Upload className="h-4 w-4" />
-                <span className="font-medium">Subir archivo</span>
-              </div>
-              <span className="text-muted-foreground text-sm">
-                Material, presentación, contexto extra o cualquier archivo
-                relacionado
-              </span>
-            </label>
-          </div>
-        </Card>
-
-        {/* Input de archivo mejorado */}
-        {wantsFile && (
-          <div className="flex flex-col gap-2">
-            <label
-              htmlFor="file"
-              className="flex items-center gap-2 font-medium text-foreground"
-              style={{
-                fontSize: "var(--style-body-size, 0.875rem)",
-                fontWeight: "var(--style-body-weight, 500)",
-              }}
-            >
-              <File className="h-4 w-4" />
-              Seleccionar archivo
-            </label>
-            <div className="relative">
-              <input
-                id="file"
-                type="file"
-                onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                style={{
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                }}
-              />
-              <Card
-                className="border-2 border-dashed transition-all hover:border-primary/50 hover:bg-accent/50"
-                style={{
-                  padding: "var(--style-card-padding, 1.5rem)",
-                  borderColor: file
-                    ? "var(--primary)"
-                    : "var(--border)",
-                  backgroundColor: file
-                    ? "var(--primary)/5"
-                    : "transparent",
-                }}
-              >
-                <div className="flex flex-col items-center justify-center gap-2 text-center">
-                  {file ? (
-                    <>
-                      <div className="flex items-center gap-2 text-foreground">
-                        <File className="h-5 w-5" />
-                        <span
-                          className="font-medium"
-                          style={{
-                            fontSize: "var(--style-body-size, 0.875rem)",
-                            fontWeight: "var(--style-body-weight, 500)",
-                          }}
-                        >
-                          {file.name}
+        {/* Custom Fields */}
+        {bookingForm?.customFields && bookingForm.customFields.length > 0 && (
+          <div className="space-y-4">
+            {bookingForm.customFields
+              .filter((field) => field.enabled)
+              .map((field) => {
+                const fieldError = errors[field.id as keyof typeof errors];
+                
+                return (
+                  <div key={field.id} className="flex flex-col gap-2">
+                    <label
+                      htmlFor={field.id}
+                      className="flex items-center gap-2 font-medium text-foreground"
+                      style={{
+                        fontSize: "var(--style-body-size, 0.875rem)",
+                        fontWeight: "var(--style-body-weight, 500)",
+                      }}
+                    >
+                      {field.label}
+                      {field.required && (
+                        <span className="text-destructive" aria-label="requerido">
+                          *
                         </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onChangeFile(null);
-                            const input = document.getElementById(
-                              "file"
-                            ) as HTMLInputElement;
-                            if (input) input.value = "";
-                          }}
-                          className="ml-2 p-1 rounded-full hover:bg-destructive/10 text-destructive transition-colors"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <span
-                        className="text-muted-foreground text-sm"
+                      )}
+                    </label>
+                    {field.type === "select" && field.options ? (
+                      <select
+                        id={field.id}
+                        {...register(field.id as keyof FormData)}
+                        className={`w-full border-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
+                          fieldError
+                            ? "border-destructive focus:border-destructive"
+                            : "border-input focus:border-ring"
+                        }`}
                         style={{
-                          fontSize: "var(--style-body-size, 0.75rem)",
+                          borderRadius: "var(--style-border-radius, 0.5rem)",
+                          padding: "0.75rem",
+                          fontSize: "var(--style-body-size, 0.875rem)",
+                          fontWeight: "var(--style-body-weight, 400)",
                         }}
                       >
-                        {(file.size / 1024).toFixed(2)} KB · Haz clic para
-                        cambiar
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-8 w-8 text-muted-foreground" />
-                      <div>
-                        <span
-                          className="text-foreground font-medium"
-                          style={{
-                            fontSize: "var(--style-body-size, 0.875rem)",
-                            fontWeight: "var(--style-body-weight, 500)",
-                          }}
-                        >
-                          Haz clic para seleccionar
-                        </span>
-                        <span
-                          className="text-muted-foreground block text-sm mt-1"
-                          style={{
-                            fontSize: "var(--style-body-size, 0.75rem)",
-                          }}
-                        >
-                          o arrastra y suelta el archivo aquí
-                        </span>
+                        <option value="">Selecciona una opción</option>
+                        {field.options.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        id={field.id}
+                        type={field.type === "number" ? "number" : "text"}
+                        {...register(field.id as keyof FormData)}
+                        className={`w-full border-2 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
+                          fieldError
+                            ? "border-destructive focus:border-destructive"
+                            : "border-input focus:border-ring"
+                        }`}
+                        style={{
+                          borderRadius: "var(--style-border-radius, 0.5rem)",
+                          padding: "0.75rem",
+                          fontSize: "var(--style-body-size, 0.875rem)",
+                          fontWeight: "var(--style-body-weight, 400)",
+                        }}
+                        placeholder={field.label}
+                      />
+                    )}
+                    {fieldError && (
+                      <div
+                        id={`${field.id}-error`}
+                        className="flex items-center gap-1.5 text-destructive text-sm"
+                        role="alert"
+                      >
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        <span>{fieldError.message}</span>
                       </div>
-                    </>
-                  )}
-                </div>
-              </Card>
-            </div>
+                    )}
+                  </div>
+                );
+              })}
           </div>
+        )}
+
+        {/* Checkbox para subir archivo - DESHABILITADO TEMPORALMENTE */}
+        {false && (
+          <>
+            <Card
+              className="cursor-pointer transition-all hover:border-primary/50"
+              style={{
+                padding: "var(--style-card-padding, 1rem)",
+                borderWidth: "2px",
+                borderStyle: "solid",
+                borderColor: wantsFile
+                  ? "var(--primary)"
+                  : "var(--border)",
+                backgroundColor: wantsFile
+                  ? "var(--primary)/5"
+                  : "transparent",
+              }}
+              onClick={() => onChangeWantsFile(!wantsFile)}
+            >
+              <div className="flex items-start gap-3">
+                <div className="shrink-0 mt-0.5">
+                  <input
+                    id="wantsFile"
+                    type="checkbox"
+                    checked={wantsFile}
+                    onChange={(e) => onChangeWantsFile(e.target.checked)}
+                    className="h-5 w-5 cursor-pointer accent-primary"
+                    style={{
+                      borderRadius: "var(--style-border-radius, 0.25rem)",
+                    }}
+                  />
+                </div>
+                <label
+                  htmlFor="wantsFile"
+                  className="flex-1 text-foreground select-none cursor-pointer"
+                  style={{
+                    fontSize: "var(--style-body-size, 0.875rem)",
+                    fontWeight: "var(--style-body-weight, 400)",
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Upload className="h-4 w-4" />
+                    <span className="font-medium">Subir archivo</span>
+                  </div>
+                  <span className="text-muted-foreground text-sm">
+                    Material, presentación, contexto extra o cualquier archivo
+                    relacionado
+                  </span>
+                </label>
+              </div>
+            </Card>
+
+            {/* Input de archivo mejorado */}
+            {wantsFile && (
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="file"
+                  className="flex items-center gap-2 font-medium text-foreground"
+                  style={{
+                    fontSize: "var(--style-body-size, 0.875rem)",
+                    fontWeight: "var(--style-body-weight, 500)",
+                  }}
+                >
+                  <File className="h-4 w-4" />
+                  Seleccionar archivo
+                </label>
+                <div className="relative">
+                  <input
+                    id="file"
+                    type="file"
+                    onChange={handleFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    style={{
+                      fontSize: "var(--style-body-size, 0.875rem)",
+                    }}
+                  />
+                  <Card
+                    className="border-2 border-dashed transition-all hover:border-primary/50 hover:bg-accent/50"
+                    style={{
+                      padding: "var(--style-card-padding, 1.5rem)",
+                      borderColor: file
+                        ? "var(--primary)"
+                        : "var(--border)",
+                      backgroundColor: file
+                        ? "var(--primary)/5"
+                        : "transparent",
+                    }}
+                  >
+                    <div className="flex flex-col items-center justify-center gap-2 text-center">
+                      {file ? (
+                        <>
+                          <div className="flex items-center gap-2 text-foreground">
+                            <File className="h-5 w-5" />
+                            <span
+                              className="font-medium"
+                              style={{
+                                fontSize: "var(--style-body-size, 0.875rem)",
+                                fontWeight: "var(--style-body-weight, 500)",
+                              }}
+                            >
+                              {file.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onChangeFile(null);
+                                const input = document.getElementById(
+                                  "file"
+                                ) as HTMLInputElement;
+                                if (input) input.value = "";
+                              }}
+                              className="ml-2 p-1 rounded-full hover:bg-destructive/10 text-destructive transition-colors"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <span
+                            className="text-muted-foreground text-sm"
+                            style={{
+                              fontSize: "var(--style-body-size, 0.75rem)",
+                            }}
+                          >
+                            {(file.size / 1024).toFixed(2)} KB · Haz clic para
+                            cambiar
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-8 w-8 text-muted-foreground" />
+                          <div>
+                            <span
+                              className="text-foreground font-medium"
+                              style={{
+                                fontSize: "var(--style-body-size, 0.875rem)",
+                                fontWeight: "var(--style-body-weight, 500)",
+                              }}
+                            >
+                              Haz clic para seleccionar
+                            </span>
+                            <span
+                              className="text-muted-foreground block text-sm mt-1"
+                              style={{
+                                fontSize: "var(--style-body-size, 0.75rem)",
+                              }}
+                            >
+                              o arrastra y suelta el archivo aquí
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         <div 
@@ -643,7 +782,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
             type="submit"
             variant="default"
             size="md"
-            disabled={!canContinue || isLoading}
+            disabled={!isValid || isLoading}
           >
             {isLoading ? (
               <>

@@ -106,7 +106,7 @@ const KairoCalendar: React.FC<KairoCalendarProps> = ({
   };
 
   return (
-    <div className="flex justify-center items-center w-full">
+    <div className="flex justify-center items-center w-full h-full">
       <Calendar
         onChange={handleChange}
         value={value}
@@ -116,7 +116,7 @@ const KairoCalendar: React.FC<KairoCalendarProps> = ({
         next2Label={null}
         locale="es-AR"
         tileDisabled={tileDisabled}
-        className="w-full rounded-2xl border-2 border-primary shadow-sm bg-white"
+        className="w-full h-full rounded-2xl border-2 border-primary shadow-sm bg-white"
       />
     </div>
   );

@@ -11,7 +11,7 @@ export type DayOfWeek = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
  */
 export interface TimeRange {
   start: string; // Formato: "HH:mm" (ej: "09:00")
-  end: string;   // Formato: "HH:mm" (ej: "17:00")
+  end: string; // Formato: "HH:mm" (ej: "17:00")
 }
 
 /**
@@ -36,7 +36,7 @@ interface CalendarResponse {
   calendarSlug: string;
   scheduling: {
     timezone: string;
-    slotMinutes: number;
+    slotMinutes: number | number[];
     bufferMinutes: number;
   };
   availability: {
@@ -128,6 +128,8 @@ export interface CalendarPayments {
   cash?: { note: string };
   transfer?: { alias: string; cbu: string; note: string };
   mercadopago?: { link: string; note: string };
+  coordinar?: { note: string };
+  noPaymentRequired?: boolean; // Si es true, deshabilita todos los métodos de pago
 }
 
 export interface BookingFormField {
@@ -148,6 +150,7 @@ export interface BookingForm {
     type: string;
     required: boolean;
     enabled: boolean;
+    options?: string[];
   }>;
 }
 
@@ -179,7 +182,7 @@ export interface CalendarSchedule {
   calendarSlug: string;
   enabledDays: DayOfWeek[];
   byDay: DaySchedule;
-  slotMinutes: number;
+  slotMinutes: number | number[];
   bufferMinutes: number;
   timezone: string;
   calendarTitle: string;
@@ -197,18 +200,25 @@ export interface CalendarSchedule {
 /**
  * Transforma la respuesta anidada del backend a la estructura plana esperada
  */
-function transformCalendarResponse(response: CalendarResponse): CalendarSchedule {
+function transformCalendarResponse(
+  response: CalendarResponse
+): CalendarSchedule {
+  // Normalizar slotMinutes: si viene como number, convertirlo a array
+  const slotMinutes = Array.isArray(response.scheduling.slotMinutes)
+    ? response.scheduling.slotMinutes
+    : [response.scheduling.slotMinutes];
+  
   return {
     calendarSlug: response.calendarSlug,
     enabledDays: response.availability.enabledDays,
     byDay: response.availability.byDay,
-    slotMinutes: response.scheduling.slotMinutes,
+    slotMinutes: slotMinutes,
     bufferMinutes: response.scheduling.bufferMinutes,
     timezone: response.scheduling.timezone,
     calendarTitle: response.styles.calendarTitle,
     calendarSubtitle: response.styles.calendarSubtitle,
     theme: response.styles.theme,
-    links: response.links?.filter(link => link.isPublic) || [],
+    links: response.links?.filter((link) => link.isPublic) || [],
     dateOverrides: response.availability.dateOverrides || {},
     maxAdvanceBookingMonths: response.availability.maxAdvanceBookingMonths,
     payments: response.payments,
@@ -243,9 +253,12 @@ export function useCalendarSchedule(): UseCalendarScheduleResult {
       }
 
       // Verificar que la URL del backend esté configurada
-      const backendUrl = import.meta.env.VITE_BACKEND_URL?.replace(/\/+$/, "") || "";
+      const backendUrl =
+        import.meta.env.VITE_BACKEND_URL?.replace(/\/+$/, "") || "";
       if (!backendUrl) {
-        throw new Error("Error de configuración: VITE_BACKEND_URL no está definida");
+        throw new Error(
+          "Error de configuración: VITE_BACKEND_URL no está definida"
+        );
       }
 
       const scheduleUrl = `${backendUrl}/calendars/public/${calendarSlug}`;
@@ -264,7 +277,8 @@ export function useCalendarSchedule(): UseCalendarScheduleResult {
         }
         const errorData = await res.json().catch(() => ({}));
         throw new Error(
-          errorData.message || "Error al obtener la configuración del calendario"
+          errorData.message ||
+            "Error al obtener la configuración del calendario"
         );
       }
 
@@ -275,7 +289,10 @@ export function useCalendarSchedule(): UseCalendarScheduleResult {
     enabled: !!calendarSlug,
     retry: (failureCount, error) => {
       // No reintentar si es un error 404
-      if (error instanceof Error && error.message === "Calendario no encontrado") {
+      if (
+        error instanceof Error &&
+        error.message === "Calendario no encontrado"
+      ) {
         return false;
       }
       return failureCount < 1;
@@ -285,7 +302,10 @@ export function useCalendarSchedule(): UseCalendarScheduleResult {
   return {
     schedule: schedule ?? null,
     loading,
-    error: queryError ? (queryError instanceof Error ? queryError.message : "Error desconocido") : null,
+    error: queryError
+      ? queryError instanceof Error
+        ? queryError.message
+        : "Error desconocido"
+      : null,
   };
 }
-

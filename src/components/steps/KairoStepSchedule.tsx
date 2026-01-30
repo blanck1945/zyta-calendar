@@ -13,6 +13,7 @@ export type TimeSlot = {
   minute?: number; // Minutos (0-59), opcional para compatibilidad
   label: string;
   disabled?: boolean; // Si está ocupado o no disponible
+  duration?: number; // Duración del slot en minutos
 };
 
 export type TimeSlotVariant = "grid" | "list" | "timeline";
@@ -34,6 +35,11 @@ interface KairoStepScheduleProps {
   timeSlotVariant?: TimeSlotVariant; // Variante de visualización de horarios
   dateOverrides?: Record<string, { disabled?: boolean; timeRanges?: Array<{ start: string; end: string }> }>;
   maxAdvanceBookingMonths?: number;
+  
+  // Nuevas props para duración
+  availableDurations?: number[]; // Duraciones disponibles en minutos
+  selectedDuration?: number | null; // Duración seleccionada
+  onSelectDuration?: (duration: number | null) => void; // Callback al seleccionar duración
 }
 
 // Función helper para formatear hora a AM/PM
@@ -65,15 +71,46 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
   enabledDays,
   dateOverrides,
   maxAdvanceBookingMonths,
+  availableDurations = [],
+  selectedDuration,
+  onSelectDuration,
 }) => {
   const hasDateSelected = useMemo(
     () => formattedSelection !== "Ninguna fecha seleccionada",
     [formattedSelection]
   );
 
-  // Formatear horarios con AM/PM
+  // Ordenar duraciones disponibles de menor a mayor
+  const sortedAvailableDurations = useMemo(() => {
+    return [...availableDurations].sort((a, b) => a - b);
+  }, [availableDurations]);
+
+  // Filtrar slots por duración seleccionada si hay duraciones disponibles
+  const filteredTimeSlots = useMemo(() => {
+    if (availableDurations.length > 0 && selectedDuration !== null && selectedDuration !== undefined) {
+      return timeSlots.filter((slot) => slot.duration === selectedDuration);
+    }
+    return timeSlots;
+  }, [timeSlots, availableDurations, selectedDuration]);
+
+  // Formatear horarios con AM/PM y ordenarlos de menor a mayor
   const formattedTimeSlots = useMemo(() => {
-    return timeSlots.map((slot) => {
+    // Ordenar slots por hora y minuto (de menor a mayor), y si hay empate, por duración
+    const sortedSlots = [...filteredTimeSlots].sort((a, b) => {
+      const aMinutes = a.hour * 60 + (a.minute ?? 0);
+      const bMinutes = b.hour * 60 + (b.minute ?? 0);
+      
+      // Si tienen la misma hora de inicio, ordenar por duración (menor a mayor)
+      if (aMinutes === bMinutes) {
+        const aDuration = a.duration ?? 0;
+        const bDuration = b.duration ?? 0;
+        return aDuration - bDuration;
+      }
+      
+      return aMinutes - bMinutes;
+    });
+
+    return sortedSlots.map((slot) => {
       // Si el slot ya tiene un label formateado (HH:mm - HH:mm), convertirlo a AM/PM
       // Si no, generar uno desde hour y minute
       let labelAMPM = slot.label;
@@ -100,7 +137,7 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
         labelAMPM,
       };
     });
-  }, [timeSlots]);
+  }, [filteredTimeSlots]);
 
   // Obtener el horario seleccionado formateado
   const selectedTimeLabel = useMemo(() => {
@@ -145,72 +182,88 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
 
   return (
     <>
-      {/* Layout principal con proporciones mejoradas - diseño moderno minimalista */}
+      {/* Layout principal - calendario a la izquierda, horarios a la derecha */}
       <div
-        className="grid lg:grid-cols-[480px_1fr]"
+        className="grid lg:grid-cols-[40%_1fr]"
         style={{
           gap: "var(--style-component-gap, 2.5rem)",
         }}
       >
         {/* Calendario */}
-        <Card
-          style={{
-            padding: "var(--style-card-padding, 2rem)",
-          }}
-        >
-          <KairoCalendar
-            value={value}
-            onChange={onChangeDate}
-            enabledDays={enabledDays}
-            dateOverrides={dateOverrides}
-            maxAdvanceBookingMonths={maxAdvanceBookingMonths}
-          />
+        <div className="w-full flex justify-center items-start">
+          <div className="w-[90%] aspect-square">
+            <KairoCalendar
+              value={value}
+              onChange={onChangeDate}
+              enabledDays={enabledDays}
+              dateOverrides={dateOverrides}
+              maxAdvanceBookingMonths={maxAdvanceBookingMonths}
+            />
+          </div>
+        </div>
 
-          {/* Fecha seleccionada */}
-          {hasDateSelected && (
+        {/* Tiempo de reunión y horarios disponibles */}
+        <div>
+          {/* Selector de duración */}
+          {availableDurations.length > 1 && onSelectDuration && (
             <div
-              className="border-t"
+              className="mb-6"
               style={{
-                marginTop: "var(--style-component-gap, 2rem)",
-                paddingTop: "var(--style-component-gap, 2rem)",
+                marginBottom: "var(--style-component-gap, 2rem)",
               }}
             >
               <p
-                className="font-medium text-muted-foreground mb-2 uppercase tracking-wide"
+                className="font-medium text-muted-foreground mb-3 uppercase tracking-wide"
                 style={{
                   fontSize: "var(--style-body-size, 0.875rem)",
                   fontWeight: "var(--style-body-weight, 400)",
                   letterSpacing: "var(--style-letter-spacing, -0.025em)",
+                  marginBottom: "0.75rem",
                 }}
               >
-                Fecha seleccionada
+                Duración de la reunión
               </p>
-              <p
-                className="font-bold text-primary"
+              <div
+                className="flex flex-wrap gap-2"
                 style={{
-                  fontSize: "var(--style-title-size, 1.875rem)",
-                  fontWeight: "var(--style-title-weight, 700)",
+                  gap: "0.5rem",
                 }}
               >
-                {formattedSelection}
-                {selectedTimeLabel && (
-                  <span
-                    className="block mt-1"
-                    style={{
-                      fontSize: "var(--style-body-size, 1rem)",
-                      fontWeight: "var(--style-body-weight, 500)",
-                    }}
-                  >
-                    {selectedTimeLabel}
-                  </span>
-                )}
-              </p>
+                {sortedAvailableDurations.map((duration) => {
+                  const isSelected = selectedDuration === duration;
+                  return (
+                    <button
+                      key={duration}
+                      type="button"
+                      onClick={() => {
+                        // Si ya está seleccionada, deseleccionar; sino, seleccionar
+                        onSelectDuration(isSelected ? null : duration);
+                        // Si se cambia la duración, limpiar el slot seleccionado
+                        if (!isSelected) {
+                          onSelectSlotHour(null as any);
+                        }
+                      }}
+                      className={cn(
+                        "border-2 transition-all",
+                        isSelected
+                          ? "border-primary bg-primary/5 hover:border-primary hover:bg-primary/5"
+                          : "border-border hover:border-primary hover:bg-primary/5"
+                      )}
+                      style={{
+                        padding: "var(--style-card-padding, 0.75rem 1rem)",
+                        borderRadius: "var(--style-border-radius, 0.75rem)",
+                        fontSize: "var(--style-body-size, 0.875rem)",
+                        fontWeight: "var(--style-body-weight, 500)",
+                      }}
+                    >
+                      {duration} min
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
-        </Card>
 
-        {/* Horarios disponibles */}
-        <div>
           <h3
             className="font-bold mb-2 text-foreground"
             style={{
@@ -225,7 +278,7 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
             style={{
               fontSize: "var(--style-body-size, 0.875rem)",
               fontWeight: "var(--style-body-weight, 400)",
-              marginBottom: "var(--style-component-gap, 2rem)",
+              marginBottom: "var(--style-component-gap, 1.5rem)",
             }}
           >
             Selecciona el horario que mejor te convenga
@@ -274,8 +327,8 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
                         isDisabled
                           ? "border-border/50 bg-muted/30 text-muted-foreground/50 cursor-not-allowed opacity-50"
                           : isSelected
-                          ? "border-primary bg-primary/5 hover:border-primary hover:bg-primary/5"
-                          : "border-border hover:border-primary hover:bg-primary/5"
+                          ? "border-primary bg-primary/5 hover:border-primary hover:bg-primary/5 cursor-pointer"
+                          : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer"
                       )}
                       style={{
                         padding: "var(--style-card-padding, 1.25rem)",

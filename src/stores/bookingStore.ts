@@ -8,6 +8,7 @@ interface BookingState {
   step: 1 | 2 | 3;
   selectedDate: CalendarValue | null;
   selectedSlot: { hour: number; minute: number } | null;
+  selectedDuration: number | null; // Duración seleccionada en minutos
   timeSlotVariant: TimeSlotVariant;
 
   // Step 2: Formulario
@@ -17,6 +18,7 @@ interface BookingState {
   phone: string;
   wantsFile: boolean;
   file: File | null;
+  customFields: Record<string, string>;
 
   // Step 3: Pago
   paymentMethod: PaymentMethod | null;
@@ -25,6 +27,7 @@ interface BookingState {
   setStep: (step: 1 | 2 | 3) => void;
   setSelectedDate: (date: CalendarValue | null) => void;
   setSelectedSlot: (slot: { hour: number; minute: number } | null) => void;
+  setSelectedDuration: (duration: number | null) => void;
   setTimeSlotVariant: (variant: TimeSlotVariant) => void;
   setName: (name: string) => void;
   setEmail: (email: string) => void;
@@ -32,6 +35,7 @@ interface BookingState {
   setPhone: (phone: string) => void;
   setWantsFile: (wantsFile: boolean) => void;
   setFile: (file: File | null) => void;
+  setCustomFields: (fields: Record<string, string>) => void;
   setPaymentMethod: (method: PaymentMethod | null) => void;
   reset: () => void;
 }
@@ -40,6 +44,7 @@ const initialState = {
   step: 1 as const,
   selectedDate: null as CalendarValue | null,
   selectedSlot: null as { hour: number; minute: number } | null,
+  selectedDuration: null as number | null,
   timeSlotVariant: "default" as TimeSlotVariant,
   name: "",
   email: "",
@@ -47,6 +52,7 @@ const initialState = {
   phone: "",
   wantsFile: false,
   file: null as File | null,
+  customFields: {} as Record<string, string>,
   paymentMethod: null as PaymentMethod | null,
 };
 
@@ -56,6 +62,7 @@ export const useBookingStore = create<BookingState>((set) => ({
   setStep: (step) => set({ step }),
   setSelectedDate: (date) => set({ selectedDate: date }),
   setSelectedSlot: (slot) => set({ selectedSlot: slot }),
+  setSelectedDuration: (duration) => set({ selectedDuration: duration }),
   setTimeSlotVariant: (variant) => set({ timeSlotVariant: variant }),
   setName: (name) => set({ name }),
   setEmail: (email) => set({ email }),
@@ -63,6 +70,7 @@ export const useBookingStore = create<BookingState>((set) => ({
   setPhone: (phone) => set({ phone }),
   setWantsFile: (wantsFile) => set({ wantsFile }),
   setFile: (file) => set({ file }),
+  setCustomFields: (customFields) => set({ customFields }),
   setPaymentMethod: (method) => set({ paymentMethod: method }),
   reset: () => set(initialState),
 }));

@@ -221,16 +221,19 @@ function App() {
     step,
     selectedDate: storeSelectedDate,
     selectedSlot,
+    selectedDuration,
     name,
     email,
     query,
     phone,
     wantsFile,
     file,
+    customFields,
     paymentMethod,
     setStep,
     setSelectedDate,
     setSelectedSlot: setStoreSelectedSlot,
+    setSelectedDuration: setStoreSelectedDuration,
     setTimeSlotVariant: setStoreTimeSlotVariant,
     setName,
     setEmail,
@@ -238,6 +241,7 @@ function App() {
     setPhone,
     setWantsFile,
     setFile,
+    setCustomFields,
     setPaymentMethod,
     reset: resetBooking,
   } = useBookingStore();
@@ -463,91 +467,99 @@ function App() {
           : null;
 
       // Verificar si hay al menos un slot disponible después del bloqueo
+      // slotMinutes ahora puede ser un array de duraciones
+      const slotDurations = Array.isArray(schedule.slotMinutes)
+        ? schedule.slotMinutes
+        : [schedule.slotMinutes];
+      const bufferMinutes = schedule.bufferMinutes || 0;
+
       for (const range of dayRanges) {
         const [startHour, startMinute] = range.start.split(":").map(Number);
         const [endHour, endMinute] = range.end.split(":").map(Number);
 
         const startTime = startHour * 60 + startMinute;
         const endTime = endHour * 60 + endMinute;
-        const slotDuration = schedule.slotMinutes;
-        const bufferMinutes = schedule.bufferMinutes || 0;
-        // El intervalo entre turnos es slotMinutes + bufferMinutes
-        const intervalBetweenSlots = slotDuration + bufferMinutes;
 
-        for (
-          let time = startTime;
-          time < endTime;
-          time += intervalBetweenSlots
-        ) {
-          const slotHour = Math.floor(time / 60);
-          const slotMinute = time % 60;
-          const nextTime = time + slotDuration;
+        // Verificar para cada duración disponible
+        for (const slotDuration of slotDurations) {
+          // El intervalo entre turnos es slotDuration + bufferMinutes
+          const intervalBetweenSlots = slotDuration + bufferMinutes;
 
-          if (nextTime > endTime) break;
+          for (
+            let time = startTime;
+            time < endTime;
+            time += intervalBetweenSlots
+          ) {
+            const slotHour = Math.floor(time / 60);
+            const slotMinute = time % 60;
+            const nextTime = time + slotDuration;
 
-          // Crear fecha/hora del slot
-          const slotDateTime = new Date(checkDate);
-          slotDateTime.setHours(slotHour, slotMinute, 0, 0);
-          const slotEndDateTime = new Date(checkDate);
-          slotEndDateTime.setHours(
-            Math.floor(nextTime / 60),
-            nextTime % 60,
-            0,
-            0
-          );
+            if (nextTime > endTime) break;
 
-          // Verificar si este slot está disponible (después del bloqueo)
-          if (blockUntil && slotDateTime < blockUntil) {
-            continue;
-          }
-
-          // Verificar si este slot está ocupado por un appointment existente
-          const isSlotOccupied = schedule.appointments?.some((appointment) => {
-            // Los appointments vienen en UTC (ISO 8601), convertirlos a fecha local
-            const appointmentStart = new Date(appointment.startTime);
-            const appointmentEnd = new Date(appointment.endTime);
-
-            // Aplicar bufferMinutes al final del appointment
-            // El buffer se agrega después del appointment para dejar tiempo entre citas
-            const appointmentEndWithBuffer = new Date(
-              appointmentEnd.getTime() +
-                (schedule.bufferMinutes || 0) * 60 * 1000
+            // Crear fecha/hora del slot
+            const slotDateTime = new Date(checkDate);
+            slotDateTime.setHours(slotHour, slotMinute, 0, 0);
+            const slotEndDateTime = new Date(checkDate);
+            slotEndDateTime.setHours(
+              Math.floor(nextTime / 60),
+              nextTime % 60,
+              0,
+              0
             );
 
-            // Normalizar las fechas a la misma zona horaria para comparar
-            // Comparar solo la fecha (año, mes, día) y hora (hora, minuto)
-            const slotDateStr = formatDateToString(slotDateTime);
-            const appointmentDateStr = formatDateToString(appointmentStart);
-
-            // Solo comparar si es el mismo día
-            if (slotDateStr !== appointmentDateStr) {
-              return false;
+            // Verificar si este slot está disponible (después del bloqueo)
+            if (blockUntil && slotDateTime < blockUntil) {
+              continue;
             }
 
-            // Si es el mismo día, comparar las horas
-            const slotStartMinutes =
-              slotDateTime.getHours() * 60 + slotDateTime.getMinutes();
-            const slotEndMinutes =
-              slotEndDateTime.getHours() * 60 + slotEndDateTime.getMinutes();
-            const appointmentStartMinutes =
-              appointmentStart.getHours() * 60 + appointmentStart.getMinutes();
-            const appointmentEndWithBufferMinutes =
-              appointmentEndWithBuffer.getHours() * 60 +
-              appointmentEndWithBuffer.getMinutes();
+            // Verificar si este slot está ocupado por un appointment existente
+            const isSlotOccupied = schedule.appointments?.some((appointment) => {
+              // Los appointments vienen en UTC (ISO 8601), convertirlos a fecha local
+              const appointmentStart = new Date(appointment.startTime);
+              const appointmentEnd = new Date(appointment.endTime);
 
-            // Verificar si hay solapamiento entre el slot y el appointment (incluyendo buffer)
-            // Fórmula simple y correcta: dos intervalos se solapan si
-            // slotStart < appointmentEndWithBuffer && slotEnd > appointmentStart
-            const hasOverlap =
-              slotStartMinutes < appointmentEndWithBufferMinutes &&
-              slotEndMinutes > appointmentStartMinutes;
+              // Aplicar bufferMinutes al final del appointment
+              // El buffer se agrega después del appointment para dejar tiempo entre citas
+              const appointmentEndWithBuffer = new Date(
+                appointmentEnd.getTime() +
+                  (schedule.bufferMinutes || 0) * 60 * 1000
+              );
 
-            return hasOverlap;
-          });
+              // Normalizar las fechas a la misma zona horaria para comparar
+              // Comparar solo la fecha (año, mes, día) y hora (hora, minuto)
+              const slotDateStr = formatDateToString(slotDateTime);
+              const appointmentDateStr = formatDateToString(appointmentStart);
 
-          // Si el slot está disponible (no bloqueado y no ocupado), retornar true
-          if (!isSlotOccupied) {
-            return true;
+              // Solo comparar si es el mismo día
+              if (slotDateStr !== appointmentDateStr) {
+                return false;
+              }
+
+              // Si es el mismo día, comparar las horas
+              const slotStartMinutes =
+                slotDateTime.getHours() * 60 + slotDateTime.getMinutes();
+              const slotEndMinutes =
+                slotEndDateTime.getHours() * 60 + slotEndDateTime.getMinutes();
+              const appointmentStartMinutes =
+                appointmentStart.getHours() * 60 + appointmentStart.getMinutes();
+              const appointmentEndWithBufferMinutes =
+                appointmentEndWithBuffer.getHours() * 60 +
+                appointmentEndWithBuffer.getMinutes();
+
+              // Verificar si hay solapamiento entre el slot y el appointment (incluyendo buffer)
+              // Fórmula simple y correcta: dos intervalos se solapan si
+              // slotStart < appointmentEndWithBuffer && slotEnd > appointmentStart
+              const hasOverlap =
+                slotStartMinutes < appointmentEndWithBufferMinutes &&
+                slotEndMinutes > appointmentStartMinutes;
+
+              return hasOverlap;
+            });
+
+            // Si el slot está disponible (no bloqueado y no ocupado), retornar true
+            if (!isSlotOccupied) {
+              return true;
+            }
           }
         }
       }
@@ -678,6 +690,10 @@ function App() {
     }
 
     // Generar slots basados en los rangos horarios y slotMinutes
+    // slotMinutes ahora puede ser un array de duraciones
+    const slotDurations = Array.isArray(schedule.slotMinutes)
+      ? schedule.slotMinutes
+      : [schedule.slotMinutes];
     const slots: TimeSlot[] = [];
 
     dayRanges.forEach((range: TimeRange) => {
@@ -686,115 +702,119 @@ function App() {
 
       const startTime = startHour * 60 + startMinute; // minutos desde medianoche
       const endTime = endHour * 60 + endMinute;
-      const slotDuration = schedule.slotMinutes;
       const bufferMinutes = schedule.bufferMinutes || 0;
-      // El intervalo entre turnos es slotMinutes + bufferMinutes
-      const intervalBetweenSlots = slotDuration + bufferMinutes;
 
-      // Generar slots con intervalo de slotMinutes + bufferMinutes entre turnos
-      for (let time = startTime; time < endTime; time += intervalBetweenSlots) {
-        const slotHour = Math.floor(time / 60);
-        const slotMinute = time % 60;
-        const nextTime = time + slotDuration;
-        const nextHour = Math.floor(nextTime / 60);
-        const nextMinute = nextTime % 60;
+      // Generar slots para cada duración disponible
+      slotDurations.forEach((slotDuration) => {
+        // El intervalo mínimo entre turnos es slotDuration + bufferMinutes
+        const intervalBetweenSlots = slotDuration + bufferMinutes;
 
-        // No crear slot si excede el rango
-        if (nextTime > endTime) break;
+        // Generar slots con intervalo de slotDuration + bufferMinutes entre turnos
+        for (let time = startTime; time < endTime; time += intervalBetweenSlots) {
+          const slotHour = Math.floor(time / 60);
+          const slotMinute = time % 60;
+          const nextTime = time + slotDuration;
+          const nextHour = Math.floor(nextTime / 60);
+          const nextMinute = nextTime % 60;
 
-        // Crear fecha/hora del slot
-        const slotDateTime = new Date(selectedDate);
-        slotDateTime.setHours(slotHour, slotMinute, 0, 0);
-        const slotEndDateTime = new Date(selectedDate);
-        slotEndDateTime.setHours(nextHour, nextMinute, 0, 0);
+          // No crear slot si excede el rango
+          if (nextTime > endTime) break;
 
-        // Verificar si este slot está bloqueado por confirmationMaxHours
-        if (blockUntil && slotDateTime < blockUntil) {
-          continue;
+          // Crear fecha/hora del slot
+          const slotDateTime = new Date(selectedDate);
+          slotDateTime.setHours(slotHour, slotMinute, 0, 0);
+          const slotEndDateTime = new Date(selectedDate);
+          slotEndDateTime.setHours(nextHour, nextMinute, 0, 0);
+
+          // Verificar si este slot está bloqueado por confirmationMaxHours
+          if (blockUntil && slotDateTime < blockUntil) {
+            continue;
+          }
+
+          // Verificar si este slot está ocupado por un appointment existente
+          const isSlotOccupied = schedule.appointments?.some((appointment) => {
+            // Los appointments vienen en UTC (ISO 8601), convertirlos a fecha local
+            const appointmentStart = new Date(appointment.startTime);
+            const appointmentEnd = new Date(appointment.endTime);
+
+            // Aplicar bufferMinutes al final del appointment
+            // El buffer se agrega después del appointment para dejar tiempo entre citas
+            const appointmentEndWithBuffer = new Date(
+              appointmentEnd.getTime() + (schedule.bufferMinutes || 0) * 60 * 1000
+            );
+
+            // Normalizar las fechas a la misma zona horaria para comparar
+            // Comparar solo la fecha (año, mes, día) y hora (hora, minuto)
+            const slotDateStr = formatDateToString(slotDateTime);
+            const appointmentDateStr = formatDateToString(appointmentStart);
+
+            // Solo comparar si es el mismo día
+            if (slotDateStr !== appointmentDateStr) {
+              return false;
+            }
+
+            // Si es el mismo día, comparar las horas
+            const slotStartMinutes =
+              slotDateTime.getHours() * 60 + slotDateTime.getMinutes();
+            const slotEndMinutes =
+              slotEndDateTime.getHours() * 60 + slotEndDateTime.getMinutes();
+            const appointmentStartMinutes =
+              appointmentStart.getHours() * 60 + appointmentStart.getMinutes();
+            const appointmentEndWithBufferMinutes =
+              appointmentEndWithBuffer.getHours() * 60 +
+              appointmentEndWithBuffer.getMinutes();
+
+            // Verificar si hay solapamiento entre el slot y el appointment (incluyendo buffer)
+            // El buffer se aplica después del appointment, así que bloqueamos hasta appointmentEnd + buffer
+            // Un slot está bloqueado si empieza antes de que termine el buffer
+            // Fórmula: slotStart < appointmentEndWithBuffer && slotEnd > appointmentStart
+            const hasOverlap =
+              slotStartMinutes < appointmentEndWithBufferMinutes &&
+              slotEndMinutes > appointmentStartMinutes;
+
+            // Debug: solo en desarrollo
+            if (import.meta.env.DEV && hasOverlap) {
+              console.log("🔴 Slot ocupado detectado:", {
+                slot: `${slotHour}:${slotMinute
+                  .toString()
+                  .padStart(2, "0")} - ${nextHour}:${nextMinute
+                  .toString()
+                  .padStart(2, "0")}`,
+                slotMinutes: `${slotStartMinutes} - ${slotEndMinutes}`,
+                appointment: `${appointmentStart.getHours()}:${appointmentStart
+                  .getMinutes()
+                  .toString()
+                  .padStart(
+                    2,
+                    "0"
+                  )} - ${appointmentEnd.getHours()}:${appointmentEnd
+                  .getMinutes()
+                  .toString()
+                  .padStart(2, "0")}`,
+                appointmentMinutes: `${appointmentStartMinutes} - ${appointmentEndWithBufferMinutes}`,
+                bufferMinutes: schedule.bufferMinutes,
+                date: slotDateStr,
+                appointmentRaw: appointment.startTime,
+              });
+            }
+
+            return hasOverlap;
+          });
+
+          // Incluir el slot, pero marcarlo como deshabilitado si está ocupado
+          slots.push({
+            hour: slotHour,
+            minute: slotMinute,
+            label: `${slotHour.toString().padStart(2, "0")}:${slotMinute
+              .toString()
+              .padStart(2, "0")} - ${nextHour
+              .toString()
+              .padStart(2, "0")}:${nextMinute.toString().padStart(2, "0")}`,
+            disabled: isSlotOccupied || false,
+            duration: slotDuration,
+          });
         }
-
-        // Verificar si este slot está ocupado por un appointment existente
-        const isSlotOccupied = schedule.appointments?.some((appointment) => {
-          // Los appointments vienen en UTC (ISO 8601), convertirlos a fecha local
-          const appointmentStart = new Date(appointment.startTime);
-          const appointmentEnd = new Date(appointment.endTime);
-
-          // Aplicar bufferMinutes al final del appointment
-          // El buffer se agrega después del appointment para dejar tiempo entre citas
-          const appointmentEndWithBuffer = new Date(
-            appointmentEnd.getTime() + (schedule.bufferMinutes || 0) * 60 * 1000
-          );
-
-          // Normalizar las fechas a la misma zona horaria para comparar
-          // Comparar solo la fecha (año, mes, día) y hora (hora, minuto)
-          const slotDateStr = formatDateToString(slotDateTime);
-          const appointmentDateStr = formatDateToString(appointmentStart);
-
-          // Solo comparar si es el mismo día
-          if (slotDateStr !== appointmentDateStr) {
-            return false;
-          }
-
-          // Si es el mismo día, comparar las horas
-          const slotStartMinutes =
-            slotDateTime.getHours() * 60 + slotDateTime.getMinutes();
-          const slotEndMinutes =
-            slotEndDateTime.getHours() * 60 + slotEndDateTime.getMinutes();
-          const appointmentStartMinutes =
-            appointmentStart.getHours() * 60 + appointmentStart.getMinutes();
-          const appointmentEndWithBufferMinutes =
-            appointmentEndWithBuffer.getHours() * 60 +
-            appointmentEndWithBuffer.getMinutes();
-
-          // Verificar si hay solapamiento entre el slot y el appointment (incluyendo buffer)
-          // El buffer se aplica después del appointment, así que bloqueamos hasta appointmentEnd + buffer
-          // Un slot está bloqueado si empieza antes de que termine el buffer
-          // Fórmula: slotStart < appointmentEndWithBuffer && slotEnd > appointmentStart
-          const hasOverlap =
-            slotStartMinutes < appointmentEndWithBufferMinutes &&
-            slotEndMinutes > appointmentStartMinutes;
-
-          // Debug: solo en desarrollo
-          if (import.meta.env.DEV && hasOverlap) {
-            console.log("🔴 Slot ocupado detectado:", {
-              slot: `${slotHour}:${slotMinute
-                .toString()
-                .padStart(2, "0")} - ${nextHour}:${nextMinute
-                .toString()
-                .padStart(2, "0")}`,
-              slotMinutes: `${slotStartMinutes} - ${slotEndMinutes}`,
-              appointment: `${appointmentStart.getHours()}:${appointmentStart
-                .getMinutes()
-                .toString()
-                .padStart(
-                  2,
-                  "0"
-                )} - ${appointmentEnd.getHours()}:${appointmentEnd
-                .getMinutes()
-                .toString()
-                .padStart(2, "0")}`,
-              appointmentMinutes: `${appointmentStartMinutes} - ${appointmentEndWithBufferMinutes}`,
-              bufferMinutes: schedule.bufferMinutes,
-              date: slotDateStr,
-              appointmentRaw: appointment.startTime,
-            });
-          }
-
-          return hasOverlap;
-        });
-
-        // Incluir el slot, pero marcarlo como deshabilitado si está ocupado
-        slots.push({
-          hour: slotHour,
-          minute: slotMinute,
-          label: `${slotHour.toString().padStart(2, "0")}:${slotMinute
-            .toString()
-            .padStart(2, "0")} - ${nextHour
-            .toString()
-            .padStart(2, "0")}:${nextMinute.toString().padStart(2, "0")}`,
-          disabled: isSlotOccupied || false,
-        });
-      }
+      });
     });
 
     return slots;
@@ -806,7 +826,21 @@ function App() {
     return selectedDate.toLocaleDateString();
   }, [selectedDate]);
 
-  const canContinue = selectedDate !== null && selectedSlot !== null;
+  // Verificar si se puede continuar: necesita fecha, slot y duración (si hay múltiples duraciones)
+  const availableDurations = useMemo(() => {
+    return schedule 
+      ? (Array.isArray(schedule.slotMinutes) ? schedule.slotMinutes : [schedule.slotMinutes])
+      : [];
+  }, [schedule?.slotMinutes]);
+  const needsDurationSelection = availableDurations.length > 1;
+  const canContinue = selectedDate !== null && selectedSlot !== null && (!needsDurationSelection || selectedDuration !== null);
+
+  // Seleccionar automáticamente la primera duración si solo hay una disponible
+  useEffect(() => {
+    if (availableDurations.length === 1 && selectedDuration === null) {
+      setStoreSelectedDuration(availableDurations[0]);
+    }
+  }, [availableDurations, selectedDuration, setStoreSelectedDuration]);
 
   const meetingStart = useMemo(() => {
     if (!selectedDate || !selectedSlot) return null;
@@ -816,11 +850,15 @@ function App() {
   }, [selectedDate, selectedSlot]);
 
   const meetingEnd = useMemo(() => {
-    if (!meetingStart || !schedule) return null;
+    if (!meetingStart) return null;
+    // Usar la duración seleccionada si está disponible, sino usar la primera duración del schedule
+    const duration = selectedDuration || (Array.isArray(schedule?.slotMinutes) 
+      ? schedule.slotMinutes[0] 
+      : schedule?.slotMinutes || 30);
     const end = new Date(meetingStart);
-    end.setMinutes(end.getMinutes() + schedule.slotMinutes);
+    end.setMinutes(end.getMinutes() + duration);
     return end;
-  }, [meetingStart, schedule]);
+  }, [meetingStart, selectedDuration, schedule]);
 
   // Los estados del formulario y pago ahora vienen del store de Zustand
 
@@ -864,12 +902,23 @@ function App() {
           startTime: meetingStart.toISOString(),
           paymentMethod: "cash", // Método por defecto cuando se requiere confirmación antes del pago
           notes: query || undefined,
+          duration: selectedDuration || undefined,
         });
 
         console.log(
           "Cita creada exitosamente (pendiente de confirmación):",
           appointment
         );
+
+        // Guardar valores del formulario en localStorage antes de resetear
+        const formData = {
+          name,
+          email,
+          phone,
+          query,
+          customFields: customFields || {},
+        };
+        localStorage.setItem("bookingFormData", JSON.stringify(formData));
 
         // Construir URL de redirección
         const params = new URLSearchParams();
@@ -923,6 +972,7 @@ function App() {
         startTime: meetingStart.toISOString(),
         paymentMethod: paymentMethod,
         notes: query || undefined,
+        duration: selectedDuration || undefined,
       });
 
       console.log("Cita creada exitosamente:", appointment);
@@ -953,7 +1003,7 @@ function App() {
           console.error("Error al crear preferencia MP", err);
           // Aquí podrías mostrar un mensaje de error al usuario
         }
-      } else if (paymentMethod === "transfer" || paymentMethod === "cash") {
+      } else if (paymentMethod === "transfer" || paymentMethod === "cash" || paymentMethod === "coordinar") {
         // Para transfer y cash, la cita ya está creada
         // Los datos de pago ya se muestran en el componente
         console.log("Reserva confirmada con método:", paymentMethod);
@@ -1242,9 +1292,16 @@ function App() {
                   onChangeDate={setValue}
                   selectedSlotHour={selectedSlot?.hour ?? null}
                   selectedSlotMinute={selectedSlot?.minute ?? null}
-                  onSelectSlotHour={(hour, minute = 0) =>
-                    setStoreSelectedSlot({ hour, minute })
-                  }
+                  onSelectSlotHour={(hour, minute = 0) => {
+                    setStoreSelectedSlot({ hour, minute });
+                    // Si el slot tiene una duración específica, actualizarla
+                    const selectedSlot = timeSlots.find(
+                      (slot) => slot.hour === hour && (slot.minute ?? 0) === minute
+                    );
+                    if (selectedSlot?.duration) {
+                      setStoreSelectedDuration(selectedSlot.duration);
+                    }
+                  }}
                   timeSlots={timeSlots}
                   formattedSelection={formattedSelection}
                   canContinue={canContinue}
@@ -1253,6 +1310,9 @@ function App() {
                   timeSlotVariant={timeSlotVariant}
                   dateOverrides={combinedDateOverrides}
                   maxAdvanceBookingMonths={schedule.maxAdvanceBookingMonths}
+                  availableDurations={Array.isArray(schedule.slotMinutes) ? schedule.slotMinutes : [schedule.slotMinutes]}
+                  selectedDuration={selectedDuration}
+                  onSelectDuration={setStoreSelectedDuration}
                 />
               )}
             </>
@@ -1268,6 +1328,7 @@ function App() {
               phone={phone}
               wantsFile={wantsFile}
               file={file}
+              customFields={customFields}
               bookingForm={schedule?.bookingForm}
               confirmCaseBeforePayment={schedule?.bookingSettings?.confirmCaseBeforePayment}
               isLoading={createAppointmentMutation.isPending}
@@ -1277,6 +1338,7 @@ function App() {
               onChangePhone={setPhone}
               onChangeWantsFile={setWantsFile}
               onChangeFile={setFile}
+              onChangeCustomFields={setCustomFields}
               onBack={handleBackToCalendar}
               onContinue={handleContinueToPayment}
             />

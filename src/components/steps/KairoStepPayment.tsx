@@ -4,7 +4,7 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import type { CalendarPayments } from "../../hooks/useCalendarSchedule";
 
-export type PaymentMethod = "cash" | "transfer" | "mercadopago";
+export type PaymentMethod = "cash" | "transfer" | "mercadopago" | "coordinar";
 
 interface KairoStepPaymentProps {
   meetingStart: Date | null;
@@ -37,11 +37,15 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
 
   // Obtener métodos de pago habilitados
   const enabledPaymentMethods = useMemo(() => {
+    // Si noPaymentRequired es true, no mostrar ningún método de pago
+    if (payments?.noPaymentRequired) {
+      return [];
+    }
     if (!payments?.enabled || payments.enabled.length === 0) {
       return [];
     }
     return payments.enabled;
-  }, [payments?.enabled]);
+  }, [payments?.enabled, payments?.noPaymentRequired]);
 
   // Verificar si un método está habilitado
   const isMethodEnabled = (method: string): boolean => {
@@ -105,6 +109,26 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
         </p>
       </div>
 
+      {/* Mensaje informativo sobre métodos de pago deshabilitados */}
+      {payments && (
+        <div 
+          className="mb-4 p-3 bg-muted/50 border border-border rounded-lg"
+          style={{
+            borderRadius: "var(--style-border-radius, 0.75rem)",
+          }}
+        >
+          <p 
+            className="text-muted-foreground text-sm"
+            style={{
+              fontSize: "var(--style-body-size, 0.75rem)",
+              fontWeight: "var(--style-body-weight, 400)",
+            }}
+          >
+            Si deshabilitas un medio de pago, quedará deshabilitado y tus clientes no lo verán al pagar.
+          </p>
+        </div>
+      )}
+
       {/* Métodos de pago disponibles */}
       {enabledPaymentMethods.length > 0 ? (
         <div 
@@ -119,7 +143,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
               type="button"
               onClick={() => onChangePaymentMethod("cash")}
               className={`
-                text-left border-2 transition-all duration-200 flex flex-col shadow-sm
+                text-left border-2 transition-all duration-200 flex flex-col shadow-sm cursor-pointer
                 ${
                   paymentMethod === "cash"
                     ? "border-primary bg-primary/5 shadow-md"
@@ -159,7 +183,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
               type="button"
               onClick={() => onChangePaymentMethod("transfer")}
               className={`
-                text-left border-2 transition-all duration-200 flex flex-col shadow-sm
+                text-left border-2 transition-all duration-200 flex flex-col shadow-sm cursor-pointer
                 ${
                   paymentMethod === "transfer"
                     ? "border-primary bg-primary/5 shadow-md"
@@ -199,7 +223,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
               type="button"
               onClick={() => onChangePaymentMethod("mercadopago")}
               className={`
-                text-left border-2 transition-all duration-200 flex flex-col shadow-sm
+                text-left border-2 transition-all duration-200 flex flex-col shadow-sm cursor-pointer
                 ${
                   paymentMethod === "mercadopago"
                     ? "border-primary bg-primary/5 shadow-md"
@@ -232,6 +256,52 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
               </span>
             </button>
           )}
+
+          {/* Opción Coordinar */}
+          {isMethodEnabled("coordinar") && payments?.coordinar && (
+            <button
+              type="button"
+              onClick={() => onChangePaymentMethod("coordinar")}
+              className={`
+                text-left border-2 transition-all duration-200 flex flex-col shadow-sm cursor-pointer
+                ${
+                  paymentMethod === "coordinar"
+                    ? "border-primary bg-primary/5 shadow-md"
+                    : "border-border bg-card hover:bg-accent hover:border-primary/50 hover:shadow-md"
+                }
+              `}
+              style={{
+                borderRadius: "var(--style-border-radius, 0.75rem)",
+                padding: "var(--style-card-padding, 1.25rem)",
+                gap: "var(--style-component-gap, 0.5rem)",
+              }}
+            >
+              <span 
+                className="font-semibold text-foreground"
+                style={{
+                  fontSize: "var(--style-body-size, 0.875rem)",
+                  fontWeight: "var(--style-body-weight, 400)",
+                }}
+              >
+                Coordinar
+              </span>
+              <span 
+                className="text-muted-foreground"
+                style={{
+                  fontSize: "var(--style-body-size, 0.75rem)",
+                  fontWeight: "var(--style-body-weight, 400)",
+                }}
+              >
+                {payments.coordinar.note}
+              </span>
+            </button>
+          )}
+        </div>
+      ) : payments?.noPaymentRequired ? (
+        <div className="mb-6 text-center py-8">
+          <p className="text-muted-foreground">
+            No se requiere método de pago para esta reserva.
+          </p>
         </div>
       ) : (
         <div className="mb-6 text-center py-8">
@@ -241,7 +311,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
         </div>
       )}
 
-      {/* Información del método seleccionado (solo para cash y transfer) */}
+      {/* Información del método seleccionado (solo para cash, transfer y coordinar) */}
       {paymentMethod && payments && paymentMethod !== "mercadopago" && (
         <Card
           className="mb-6"
@@ -336,6 +406,29 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
                   </p>
                 )}
               </div>
+            </div>
+          )}
+
+          {paymentMethod === "coordinar" && payments.coordinar && (
+            <div className="flex flex-col gap-2">
+              <p
+                className="font-semibold text-foreground"
+                style={{
+                  fontSize: "var(--style-body-size, 0.875rem)",
+                  fontWeight: "var(--style-body-weight, 500)",
+                }}
+              >
+                Coordinar pago
+              </p>
+              <p
+                className="text-muted-foreground"
+                style={{
+                  fontSize: "var(--style-body-size, 0.875rem)",
+                  fontWeight: "var(--style-body-weight, 400)",
+                }}
+              >
+                {payments.coordinar.note}
+              </p>
             </div>
           )}
         </Card>

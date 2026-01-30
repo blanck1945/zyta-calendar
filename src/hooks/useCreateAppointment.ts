@@ -6,8 +6,9 @@ export interface CreateAppointmentRequest {
   clientEmail: string;
   clientPhone?: string;
   startTime: string; // ISO 8601 format
-  paymentMethod: "mercadopago" | "transfer" | "cash";
+  paymentMethod: "mercadopago" | "transfer" | "cash" | "coordinar";
   notes?: string;
+  duration?: number; // Duración en minutos (opcional)
 }
 
 export interface CreateAppointmentResponse {
@@ -57,6 +58,7 @@ export function useCreateAppointment() {
             startTime: data.startTime,
             paymentMethod: data.paymentMethod,
             notes: data.notes || undefined,
+            duration: data.duration || undefined,
           }),
         }
       );
