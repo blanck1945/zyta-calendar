@@ -2,7 +2,6 @@
 import { useMemo, useEffect, useState } from "react";
 import KairoCalendar, { type CalendarValue } from "../KairoCalendar";
 import { Button } from "../ui/button";
-import { Card } from "../ui/card";
 import { cn } from "../../utils/cn";
 import type { NumberFontVariant } from "../../utils/numberFontVariants";
 import { getNumberFontVariantClass } from "../../utils/numberFontVariants";
@@ -138,18 +137,6 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
       };
     });
   }, [filteredTimeSlots]);
-
-  // Obtener el horario seleccionado formateado
-  const selectedTimeLabel = useMemo(() => {
-    if (selectedSlotHour === null) return null;
-    const selectedSlot = formattedTimeSlots.find(
-      (slot) =>
-        slot.hour === selectedSlotHour &&
-        (selectedSlotMinute === undefined ||
-          selectedSlotMinute === (slot.minute ?? 0))
-    );
-    return selectedSlot?.labelAMPM || null;
-  }, [selectedSlotHour, selectedSlotMinute, formattedTimeSlots]);
 
   // Obtener variante tipográfica actual
   const [numberFontVariant, setNumberFontVariant] = useState<NumberFontVariant>(
