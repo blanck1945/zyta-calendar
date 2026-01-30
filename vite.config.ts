@@ -19,8 +19,24 @@ export default defineConfig({
   ],
   build: {
     target: "esnext",
-    minify: false,
+    minify: "esbuild",
     cssCodeSplit: false,
-    modulePreload: false,
+    modulePreload: { polyfill: true },
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes("node_modules")) {
+            if (id.includes("react-dom") || id.includes("react/")) return "react";
+            if (id.includes("@tanstack/react-query")) return "react-query";
+            if (id.includes("zustand")) return "zustand";
+            if (id.includes("framer-motion")) return "framer-motion";
+            if (id.includes("react-router")) return "react-router";
+            if (id.includes("react-calendar")) return "react-calendar";
+            if (id.includes("lucide-react")) return "lucide";
+            return "vendor";
+          }
+        },
+      },
+    },
   },
 });

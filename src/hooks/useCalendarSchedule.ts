@@ -263,11 +263,13 @@ export function useCalendarSchedule(): UseCalendarScheduleResult {
 
       const scheduleUrl = `${backendUrl}/calendars/public/${calendarSlug}`;
 
-      console.log("🔍 useCalendarSchedule - Haciendo request:", {
-        calendarSlug,
-        backendUrl,
-        scheduleUrl,
-      });
+      if (import.meta.env.DEV) {
+        console.log("🔍 useCalendarSchedule - Haciendo request:", {
+          calendarSlug,
+          backendUrl,
+          scheduleUrl,
+        });
+      }
 
       const res = await fetch(scheduleUrl);
 

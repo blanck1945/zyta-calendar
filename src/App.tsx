@@ -1,16 +1,21 @@
 // src/App.tsx
-import { useMemo, useEffect, useRef, useState } from "react";
+import { useMemo, useEffect, useRef, useState, useCallback, lazy, Suspense } from "react";
 import { Check } from "lucide-react";
 import { useYourIdAuth } from "./sdk/useYourIDAuth";
-import KairoStepPayment from "./components/steps/KairoStepPayment";
-import KairoStepForm from "./components/steps/KairoStepForm";
 import KairoStepSchedule, {
   type TimeSlot,
   type TimeSlotVariant,
 } from "./components/steps/KairoStepSchedule";
 import type { CalendarValue } from "./components/KairoCalendar";
-import { ThemeSwitcher } from "./components/ThemeSwitcher";
 import { SocialLinks } from "./components/SocialLinks/SocialLinks";
+
+// Lazy: cargar Form y Payment solo cuando el usuario llega a ese paso → menos JS inicial, app más rápida
+const KairoStepForm = lazy(() => import("./components/steps/KairoStepForm"));
+const KairoStepPayment = lazy(() => import("./components/steps/KairoStepPayment"));
+const ThemeSwitcher = lazy(() =>
+  import("./components/ThemeSwitcher").then((m) => ({ default: m.ThemeSwitcher }))
+);
+
 import { useTheme } from "./contexts/ThemeContext";
 import { useProfessionalId } from "./utils/useProfessionalId";
 import {
@@ -27,6 +32,22 @@ import {
   STYLE_VARIANT_NAMES,
 } from "./utils/styleVariants";
 import { useBookingStore } from "./stores/bookingStore";
+
+// Fallback ligero para Suspense: evita layout shift y da feedback inmediato al cambiar de paso
+const StepFallback = () => (
+  <div
+    className="animate-pulse rounded-lg bg-muted/50"
+    style={{
+      minHeight: "280px",
+      padding: "var(--style-card-padding, 1.5rem)",
+    }}
+    aria-hidden
+  >
+    <div className="h-6 w-3/4 rounded bg-muted mb-4" />
+    <div className="h-4 w-full rounded bg-muted mb-2" />
+    <div className="h-4 w-5/6 rounded bg-muted" />
+  </div>
+);
 
 function App() {
   const { setThemeFromCalendar } = useTheme();
@@ -276,29 +297,19 @@ function App() {
     };
   }, []);
 
-  // También verificar localStorage periódicamente (fallback)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const saved = localStorage.getItem(
-        "kairo-time-slot-variant"
-      ) as TimeSlotVariant;
-      if (
-        saved &&
-        ["grid", "list", "timeline"].includes(saved) &&
-        saved !== timeSlotVariant
-      ) {
-        setTimeSlotVariant(saved);
-      }
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, [timeSlotVariant]);
-
   useYourIdAuth({
     applicationBaseUrl: import.meta.env.VITE_APPLICATION_URL,
     yourIdLoginUrl: import.meta.env.VITE_YOUR_ID_LOGIN_URL,
     env: import.meta.env.VITE_ENV, // "dev" | "prod"
   });
+
+  // Preload del siguiente paso: el chunk se descarga en segundo plano para que "Continuar" sea instantáneo
+  useEffect(() => {
+    if (step === 1 && schedule) void import("./components/steps/KairoStepForm");
+  }, [step, schedule]);
+  useEffect(() => {
+    if (step === 2) void import("./components/steps/KairoStepPayment");
+  }, [step]);
 
   // Aplicar el tema del calendario cuando se carga el schedule (solo la primera vez)
   const hasAppliedCalendarTheme = useRef(false);
@@ -818,7 +829,7 @@ function App() {
     });
 
     return slots;
-  }, [selectedDate, schedule]);
+  }, [selectedDate, schedule, combinedDateOverrides]);
 
   const formattedSelection = useMemo(() => {
     if (!selectedDate || Array.isArray(selectedDate))
@@ -834,6 +845,15 @@ function App() {
   }, [schedule?.slotMinutes]);
   const needsDurationSelection = availableDurations.length > 1;
   const canContinue = selectedDate !== null && selectedSlot !== null && (!needsDurationSelection || selectedDuration !== null);
+
+  const onSelectSlot = useCallback(
+    (hour: number, minute = 0) => {
+      setStoreSelectedSlot({ hour, minute });
+      const slot = timeSlots.find((s) => s.hour === hour && (s.minute ?? 0) === minute);
+      if (slot?.duration) setStoreSelectedDuration(slot.duration);
+    },
+    [timeSlots, setStoreSelectedSlot, setStoreSelectedDuration]
+  );
 
   // Seleccionar automáticamente la primera duración si solo hay una disponible
   useEffect(() => {
@@ -862,14 +882,14 @@ function App() {
 
   // Los estados del formulario y pago ahora vienen del store de Zustand
 
-  const handleContinueToForm = () => {
+  const handleContinueToForm = useCallback(() => {
     if (!canContinue) return;
     setStep(2);
-  };
+  }, [canContinue, setStep]);
 
-  const handleBackToCalendar = () => {
+  const handleBackToCalendar = useCallback(() => {
     setStep(1);
-  };
+  }, [setStep]);
 
   // Sincronizar timeSlotVariant con el store
   useEffect(() => {
@@ -942,9 +962,9 @@ function App() {
     setStep(3);
   };
 
-  const handleBackToForm = () => {
+  const handleBackToForm = useCallback(() => {
     setStep(2);
-  };
+  }, [setStep]);
 
   // Hook para crear preferencia de Mercado Pago
   const createPreferenceMutation = useCreateMercadoPagoPreference();
@@ -1292,16 +1312,7 @@ function App() {
                   onChangeDate={setValue}
                   selectedSlotHour={selectedSlot?.hour ?? null}
                   selectedSlotMinute={selectedSlot?.minute ?? null}
-                  onSelectSlotHour={(hour, minute = 0) => {
-                    setStoreSelectedSlot({ hour, minute });
-                    // Si el slot tiene una duración específica, actualizarla
-                    const selectedSlot = timeSlots.find(
-                      (slot) => slot.hour === hour && (slot.minute ?? 0) === minute
-                    );
-                    if (selectedSlot?.duration) {
-                      setStoreSelectedDuration(selectedSlot.duration);
-                    }
-                  }}
+                  onSelectSlotHour={onSelectSlot}
                   timeSlots={timeSlots}
                   formattedSelection={formattedSelection}
                   canContinue={canContinue}
@@ -1319,50 +1330,56 @@ function App() {
           )}
 
           {step === 2 && (
-            <KairoStepForm
-              meetingStart={meetingStart}
-              meetingEnd={meetingEnd}
-              name={name}
-              email={email}
-              query={query}
-              phone={phone}
-              wantsFile={wantsFile}
-              file={file}
-              customFields={customFields}
-              bookingForm={schedule?.bookingForm}
-              confirmCaseBeforePayment={schedule?.bookingSettings?.confirmCaseBeforePayment}
-              isLoading={createAppointmentMutation.isPending}
-              onChangeName={setName}
-              onChangeEmail={setEmail}
-              onChangeQuery={setQuery}
-              onChangePhone={setPhone}
-              onChangeWantsFile={setWantsFile}
-              onChangeFile={setFile}
-              onChangeCustomFields={setCustomFields}
-              onBack={handleBackToCalendar}
-              onContinue={handleContinueToPayment}
-            />
-          )}
-
-          {step === 3 &&
-            !schedule?.bookingSettings?.confirmCaseBeforePayment && (
-              <KairoStepPayment
+            <Suspense fallback={<StepFallback />}>
+              <KairoStepForm
                 meetingStart={meetingStart}
                 meetingEnd={meetingEnd}
                 name={name}
                 email={email}
-                paymentMethod={paymentMethod}
-                onChangePaymentMethod={setPaymentMethod}
-                payments={schedule?.payments}
-                onBack={handleBackToForm}
-                onConfirm={handleConfirmReservation}
+                query={query}
+                phone={phone}
+                wantsFile={wantsFile}
+                file={file}
+                customFields={customFields}
+                bookingForm={schedule?.bookingForm}
+                confirmCaseBeforePayment={schedule?.bookingSettings?.confirmCaseBeforePayment}
+                isLoading={createAppointmentMutation.isPending}
+                onChangeName={setName}
+                onChangeEmail={setEmail}
+                onChangeQuery={setQuery}
+                onChangePhone={setPhone}
+                onChangeWantsFile={setWantsFile}
+                onChangeFile={setFile}
+                onChangeCustomFields={setCustomFields}
+                onBack={handleBackToCalendar}
+                onContinue={handleContinueToPayment}
               />
+            </Suspense>
+          )}
+
+          {step === 3 &&
+            !schedule?.bookingSettings?.confirmCaseBeforePayment && (
+              <Suspense fallback={<StepFallback />}>
+                <KairoStepPayment
+                  meetingStart={meetingStart}
+                  meetingEnd={meetingEnd}
+                  name={name}
+                  email={email}
+                  paymentMethod={paymentMethod}
+                  onChangePaymentMethod={setPaymentMethod}
+                  payments={schedule?.payments}
+                  onBack={handleBackToForm}
+                  onConfirm={handleConfirmReservation}
+                />
+              </Suspense>
             )}
         </section>
       </main>
 
-      {/* Barra inferior para cambiar tema (debug/testing) */}
-      <ThemeSwitcher />
+      {/* Barra inferior para cambiar tema (debug/testing) — lazy para no bloquear first paint */}
+      <Suspense fallback={null}>
+        <ThemeSwitcher />
+      </Suspense>
     </div>
   );
 }
