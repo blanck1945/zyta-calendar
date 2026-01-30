@@ -2,6 +2,18 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Rendimiento (Performance)
+
+La app está optimizada para **carga rápida** y **transiciones fluidas**:
+
+- **Vite sin module federation** — Build más simple y rápido con code splitting nativo
+- **Lazy + Suspense** — Form, Payment y ThemeSwitcher se cargan bajo demanda
+- **Preload inteligente** — El chunk del siguiente paso se descarga en segundo plano
+- **Chunks separados** — React (193 KB), Router (82 KB), Form (11 KB), Payment (8 KB) en archivos independientes
+- **Fallbacks ligeros** — Skeletons para evitar layout shift
+
+**Resultado**: Primera carga rápida, transiciones instantáneas, mejor caché del navegador.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
