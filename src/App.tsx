@@ -1173,30 +1173,44 @@ function App() {
             marginBottom: "var(--style-component-gap, 3rem)",
           }}
         >
-          <div className="flex-1">
-            <h1
-              className="text-foreground mb-3 tracking-tight"
-              style={{
-                fontSize: "var(--style-title-size, 2.25rem)",
-                fontWeight: "var(--style-title-weight, 700)",
-                letterSpacing: "var(--style-letter-spacing, -0.025em)",
-                lineHeight: "var(--style-line-height, 1.2)",
-              }}
-            >
-              {stepTitles.title}
-            </h1>
-            <p
-              className="text-muted-foreground"
-              style={{
-                fontSize: "var(--style-subtitle-size, 1.125rem)",
-                fontWeight: "var(--style-subtitle-weight, 400)",
-                letterSpacing: "var(--style-letter-spacing, -0.025em)",
-                lineHeight: "var(--style-line-height, 1.2)",
-              }}
-            >
-              {stepTitles.subtitle}
-            </p>
-          </div>
+          {scheduleLoading ? (
+            /* Skeleton del header mientras carga - mismo tamaño para evitar layout shift */
+            <div className="flex-1 animate-pulse">
+              <div 
+                className="h-9 w-64 bg-muted rounded mb-3"
+                style={{ maxWidth: "70%" }}
+              />
+              <div 
+                className="h-5 w-96 bg-muted/70 rounded"
+                style={{ maxWidth: "90%" }}
+              />
+            </div>
+          ) : (
+            <div className="flex-1">
+              <h1
+                className="text-foreground mb-3 tracking-tight"
+                style={{
+                  fontSize: "var(--style-title-size, 2.25rem)",
+                  fontWeight: "var(--style-title-weight, 700)",
+                  letterSpacing: "var(--style-letter-spacing, -0.025em)",
+                  lineHeight: "var(--style-line-height, 1.2)",
+                }}
+              >
+                {stepTitles.title}
+              </h1>
+              <p
+                className="text-muted-foreground"
+                style={{
+                  fontSize: "var(--style-subtitle-size, 1.125rem)",
+                  fontWeight: "var(--style-subtitle-weight, 400)",
+                  letterSpacing: "var(--style-letter-spacing, -0.025em)",
+                  lineHeight: "var(--style-line-height, 1.2)",
+                }}
+              >
+                {stepTitles.subtitle}
+              </p>
+            </div>
+          )}
           {schedule?.links && schedule.links.length > 0 && (
             <div className="shrink-0">
               <SocialLinks links={schedule.links} />
@@ -1268,10 +1282,21 @@ function App() {
           {step === 1 && (
             <>
               {scheduleLoading && (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">
-                    Cargando configuración del calendario...
-                  </p>
+                <div className="grid lg:grid-cols-[40%_1fr] gap-10 animate-pulse">
+                  {/* Skeleton del calendario */}
+                  <div className="w-full flex justify-center items-start">
+                    <div className="w-[90%] aspect-square bg-muted rounded-xl" />
+                  </div>
+                  {/* Skeleton de horarios */}
+                  <div>
+                    <div className="h-7 w-48 bg-muted rounded mb-2" />
+                    <div className="h-4 w-64 bg-muted/70 rounded mb-6" />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className="h-10 bg-muted rounded-lg" />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
               {scheduleError && (

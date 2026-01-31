@@ -109,32 +109,12 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
         </p>
       </div>
 
-      {/* Mensaje informativo sobre métodos de pago deshabilitados */}
-      {payments && (
-        <div 
-          className="mb-4 p-3 bg-muted/50 border border-border rounded-lg"
-          style={{
-            borderRadius: "var(--style-border-radius, 0.75rem)",
-          }}
-        >
-          <p 
-            className="text-muted-foreground text-sm"
-            style={{
-              fontSize: "var(--style-body-size, 0.75rem)",
-              fontWeight: "var(--style-body-weight, 400)",
-            }}
-          >
-            Si deshabilitas un medio de pago, quedará deshabilitado y tus clientes no lo verán al pagar.
-          </p>
-        </div>
-      )}
-
       {/* Métodos de pago disponibles */}
       {enabledPaymentMethods.length > 0 ? (
         <div 
-          className="grid md:grid-cols-2 mb-6"
+          className="grid md:grid-cols-2 mb-2"
           style={{
-            gap: "var(--style-component-gap, 1rem)",
+            gap: "0.75rem",
           }}
         >
           {/* Opción Efectivo */}
@@ -302,13 +282,13 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
           )}
         </div>
       ) : payments?.noPaymentRequired ? (
-        <div className="mb-6 text-center py-8">
+        <div className="mb-2 text-center py-6">
           <p className="text-muted-foreground">
             No se requiere método de pago para esta reserva.
           </p>
         </div>
       ) : (
-        <div className="mb-6 text-center py-8">
+        <div className="mb-2 text-center py-6">
           <p className="text-muted-foreground">
             No hay métodos de pago configurados.
           </p>
@@ -318,7 +298,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
       {/* Información del método seleccionado (solo para transfer) */}
       {paymentMethod === "transfer" && payments?.transfer && (
         <Card
-          className="mb-6"
+          className="mb-2"
           style={{
             padding: "var(--style-card-padding, 1.5rem)",
           }}
@@ -393,7 +373,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
       <div 
         className="flex flex-col-reverse sm:flex-row pt-2"
         style={{
-          gap: "var(--style-component-gap, 0.75rem)",
+          gap: "0.5rem",
         }}
       >
         <Button

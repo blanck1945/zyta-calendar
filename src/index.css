@@ -2,26 +2,27 @@
 
 /* Variables CSS del sistema de diseño (basadas en globals.css) */
 :root {
-  /* Updated color scheme with medical orange primary color */
+  /* Updated color scheme - Custom branding */
+  /* Header/Titles: #161616 | CTA/Accents: #FF6A00 | Secondary text: #9CA3AF */
   --background: oklch(0.99 0 0);
-  --foreground: oklch(0.15 0 0);
+  --foreground: #161616;
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0 0);
+  --card-foreground: #161616;
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0 0);
-  --primary: oklch(0.65 0.18 35);
-  --primary-foreground: oklch(1 0 0);
+  --popover-foreground: #161616;
+  --primary: #FF6A00;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.15 0 0);
+  --secondary-foreground: #161616;
   --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.97 0.01 35);
-  --accent-foreground: oklch(0.15 0 0);
+  --muted-foreground: #9CA3AF;
+  --accent: #FFF7ED;
+  --accent-foreground: #161616;
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.92 0 0);
   --input: oklch(0.92 0 0);
-  --ring: oklch(0.65 0.18 35);
+  --ring: #FF6A00;
   --radius: 0.75rem;
 }
 
@@ -53,29 +54,29 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Colores principales - valores por defecto (tema cálido) */
-  --color-primary-50: #fff7ed;
-  --color-primary-100: #ffedd5;
-  --color-primary-200: #fed7aa;
-  --color-primary-300: #fdba74;
-  --color-primary-400: #fb923c;
-  --color-primary-500: #f97316;
-  --color-primary-600: #ea580c;
-  --color-primary-700: #c2410c;
-  --color-primary-800: #9a3412;
-  --color-primary-900: #7c2d12;
+  /* Colores principales - paleta basada en #FF6A00 */
+  --color-primary-50: #FFF7ED;
+  --color-primary-100: #FFEDD5;
+  --color-primary-200: #FED7AA;
+  --color-primary-300: #FDBA74;
+  --color-primary-400: #FF8C33;
+  --color-primary-500: #FF6A00;
+  --color-primary-600: #E55F00;
+  --color-primary-700: #CC5500;
+  --color-primary-800: #994000;
+  --color-primary-900: #662B00;
 
-  /* Colores secundarios - valores por defecto (tema cálido) */
-  --color-secondary-50: #fef2f2;
-  --color-secondary-100: #fee2e2;
-  --color-secondary-200: #fecaca;
-  --color-secondary-300: #fca5a5;
-  --color-secondary-400: #f87171;
-  --color-secondary-500: #ef4444;
-  --color-secondary-600: #dc2626;
-  --color-secondary-700: #b91c1c;
-  --color-secondary-800: #991b1b;
-  --color-secondary-900: #7f1d1d;
+  /* Colores secundarios - paleta de grises basada en #9CA3AF */
+  --color-secondary-50: #F9FAFB;
+  --color-secondary-100: #F3F4F6;
+  --color-secondary-200: #E5E7EB;
+  --color-secondary-300: #D1D5DB;
+  --color-secondary-400: #9CA3AF;
+  --color-secondary-500: #6B7280;
+  --color-secondary-600: #4B5563;
+  --color-secondary-700: #374151;
+  --color-secondary-800: #1F2937;
+  --color-secondary-900: #161616;
 
   /* Colores de fondo - valores por defecto (tema cálido) */
   --color-background-primary: #ffffff;
