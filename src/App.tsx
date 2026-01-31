@@ -970,6 +970,15 @@ function App() {
       return;
     }
     // Si no, continuar al paso de pago
+    // Auto-seleccionar método de pago si hay solo uno habilitado
+    const enabledMethods = schedule?.payments?.enabled || [];
+    if (enabledMethods.length === 1) {
+      // Si hay un solo método, seleccionarlo automáticamente
+      setPaymentMethod(enabledMethods[0] as "cash" | "transfer" | "mercadopago" | "coordinar");
+    } else if (enabledMethods.length > 1) {
+      // Si hay múltiples métodos, no seleccionar ninguno
+      setPaymentMethod(null);
+    }
     setStep(3);
   };
 

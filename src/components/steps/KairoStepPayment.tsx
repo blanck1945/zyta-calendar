@@ -315,126 +315,78 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
         </div>
       )}
 
-      {/* Información del método seleccionado (solo para cash, transfer y coordinar) */}
-      {paymentMethod && payments && paymentMethod !== "mercadopago" && (
+      {/* Información del método seleccionado (solo para transfer) */}
+      {paymentMethod === "transfer" && payments?.transfer && (
         <Card
           className="mb-6"
           style={{
             padding: "var(--style-card-padding, 1.5rem)",
           }}
         >
-          {paymentMethod === "cash" && payments.cash && (
+          <div className="flex flex-col gap-3">
+            <p
+              className="font-semibold text-foreground"
+              style={{
+                fontSize: "var(--style-body-size, 0.875rem)",
+                fontWeight: "var(--style-body-weight, 500)",
+              }}
+            >
+              Datos para transferencia bancaria
+            </p>
             <div className="flex flex-col gap-2">
-              <p
-                className="font-semibold text-foreground"
-                style={{
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 500)",
-                }}
-              >
-                Pago en efectivo
-              </p>
-              <p
-                className="text-muted-foreground"
-                style={{
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 400)",
-                }}
-              >
-                {payments.cash.note}
-              </p>
-            </div>
-          )}
-
-          {paymentMethod === "transfer" && payments.transfer && (
-            <div className="flex flex-col gap-3">
-              <p
-                className="font-semibold text-foreground"
-                style={{
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 500)",
-                }}
-              >
-                Datos para transferencia bancaria
-              </p>
-              <div className="flex flex-col gap-2">
-                <div>
-                  <p
-                    className="text-muted-foreground mb-1"
-                    style={{
-                      fontSize: "var(--style-body-size, 0.75rem)",
-                      fontWeight: "var(--style-body-weight, 400)",
-                    }}
-                  >
-                    Alias:
-                  </p>
-                  <p
-                    className="font-mono font-semibold text-foreground"
-                    style={{
-                      fontSize: "var(--style-body-size, 0.875rem)",
-                      fontWeight: "var(--style-body-weight, 600)",
-                    }}
-                  >
-                    {payments.transfer.alias}
-                  </p>
-                </div>
-                <div>
-                  <p
-                    className="text-muted-foreground mb-1"
-                    style={{
-                      fontSize: "var(--style-body-size, 0.75rem)",
-                      fontWeight: "var(--style-body-weight, 400)",
-                    }}
-                  >
-                    CBU:
-                  </p>
-                  <p
-                    className="font-mono font-semibold text-foreground"
-                    style={{
-                      fontSize: "var(--style-body-size, 0.875rem)",
-                      fontWeight: "var(--style-body-weight, 600)",
-                    }}
-                  >
-                    {payments.transfer.cbu}
-                  </p>
-                </div>
-                {payments.transfer.note && (
-                  <p
-                    className="text-muted-foreground mt-2"
-                    style={{
-                      fontSize: "var(--style-body-size, 0.75rem)",
-                      fontWeight: "var(--style-body-weight, 400)",
-                    }}
-                  >
-                    {payments.transfer.note}
-                  </p>
-                )}
+              <div>
+                <p
+                  className="text-muted-foreground mb-1"
+                  style={{
+                    fontSize: "var(--style-body-size, 0.75rem)",
+                    fontWeight: "var(--style-body-weight, 400)",
+                  }}
+                >
+                  Alias:
+                </p>
+                <p
+                  className="font-mono font-semibold text-foreground"
+                  style={{
+                    fontSize: "var(--style-body-size, 0.875rem)",
+                    fontWeight: "var(--style-body-weight, 600)",
+                  }}
+                >
+                  {payments.transfer.alias}
+                </p>
               </div>
+              <div>
+                <p
+                  className="text-muted-foreground mb-1"
+                  style={{
+                    fontSize: "var(--style-body-size, 0.75rem)",
+                    fontWeight: "var(--style-body-weight, 400)",
+                  }}
+                >
+                  CBU:
+                </p>
+                <p
+                  className="font-mono font-semibold text-foreground"
+                  style={{
+                    fontSize: "var(--style-body-size, 0.875rem)",
+                    fontWeight: "var(--style-body-weight, 600)",
+                  }}
+                >
+                  {payments.transfer.cbu}
+                </p>
+              </div>
+              {payments.transfer.note && (
+                <p
+                  className="text-muted-foreground mt-2"
+                  style={{
+                    fontSize: "var(--style-body-size, 0.75rem)",
+                    fontWeight: "var(--style-body-weight, 400)",
+                  }}
+                >
+                  {payments.transfer.note}
+                </p>
+              )}
             </div>
-          )}
-
-          {paymentMethod === "coordinar" && payments.coordinar && (
-            <div className="flex flex-col gap-2">
-              <p
-                className="font-semibold text-foreground"
-                style={{
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 500)",
-                }}
-              >
-                Coordinar pago
-              </p>
-              <p
-                className="text-muted-foreground"
-                style={{
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 400)",
-                }}
-              >
-                {payments.coordinar.note}
-              </p>
-            </div>
-          )}
+          </div>
         </Card>
       )}
 

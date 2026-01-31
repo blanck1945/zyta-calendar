@@ -41,20 +41,19 @@ interface KairoStepScheduleProps {
   onSelectDuration?: (duration: number | null) => void; // Callback al seleccionar duración
 }
 
-// Función helper para formatear hora a AM/PM
-const formatHourToAMPM = (hour: number, minute: number = 0): string => {
-  const displayHour = hour % 12 || 12;
-  const ampm = hour < 12 ? "AM" : "PM";
+// Función helper para formatear hora en formato 24h
+const formatHour24h = (hour: number, minute: number = 0): string => {
+  const hourStr = hour.toString().padStart(2, "0");
   const minuteStr = minute.toString().padStart(2, "0");
-  return `${displayHour}:${minuteStr} ${ampm}`;
+  return `${hourStr}:${minuteStr}`;
 };
 
-// Función para convertir hora:minuto string a formato AM/PM
-const formatTimeStringToAMPM = (timeStr: string): string => {
+// Función para convertir hora:minuto string a formato 24h
+const formatTimeString24h = (timeStr: string): string => {
   const [hourStr, minuteStr] = timeStr.split(":");
   const hour = parseInt(hourStr, 10);
   const minute = parseInt(minuteStr || "0", 10);
-  return formatHourToAMPM(hour, minute);
+  return formatHour24h(hour, minute);
 };
 
 const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
@@ -114,21 +113,14 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
       // Si no, generar uno desde hour y minute
       let labelAMPM = slot.label;
 
-      // Si el label está en formato 24h (HH:mm - HH:mm), convertirlo a AM/PM
+      // Si el label está en formato 24h (HH:mm - HH:mm), extraer solo hora de inicio
       if (slot.label.match(/^\d{2}:\d{2} - \d{2}:\d{2}$/)) {
-        const [startTime, endTime] = slot.label.split(" - ");
-        labelAMPM = `${formatTimeStringToAMPM(
-          startTime
-        )} - ${formatTimeStringToAMPM(endTime)}`;
+        const [startTime] = slot.label.split(" - ");
+        labelAMPM = formatTimeString24h(startTime);
       } else {
-        // Fallback: usar hour y minute directamente
+        // Fallback: usar hour y minute directamente (solo hora de inicio)
         const slotMinute = slot.minute ?? 0;
-        const endHour = slot.hour;
-        const endMinute = slotMinute;
-        labelAMPM = `${formatHourToAMPM(
-          slot.hour,
-          slotMinute
-        )} - ${formatHourToAMPM(endHour, endMinute)}`;
+        labelAMPM = formatHour24h(slot.hour, slotMinute);
       }
 
       return {
@@ -287,10 +279,8 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
           ) : (
             <>
               <div
-                className="mb-8 custom-scrollbar"
+                className="mb-8 custom-scrollbar grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, 1fr)",
                   gap: "0.5rem",
                   maxHeight: "60vh",
                   overflowY: "auto",
@@ -312,7 +302,7 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
                       onClick={() => !isDisabled && onSelectSlotHour(slot.hour, slot.minute)}
                       disabled={isDisabled}
                       className={cn(
-                        "w-full border-2 text-left font-mono transition-all duration-200",
+                        "w-full border-2 text-center font-mono transition-all duration-200",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2",
                         getNumberFontVariantClass(numberFontVariant),
                         isDisabled
