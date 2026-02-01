@@ -91,8 +91,8 @@ function createValidationSchema(bookingForm?: BookingForm) {
 type FormData = z.infer<ReturnType<typeof createValidationSchema>>;
 
 const KairoStepForm: React.FC<KairoStepFormProps> = ({
-  meetingStart,
-  meetingEnd,
+  meetingStart: _meetingStart,
+  meetingEnd: _meetingEnd,
   name,
   email,
   query,
