@@ -28,11 +28,13 @@ const KairoCalendar: React.FC<KairoCalendarProps> = ({
     return d;
   }, []);
 
-  // Calcular fecha máxima basada en maxAdvanceBookingMonths
+  // Fecha máxima: último día del último mes permitido (ej. 3 meses = hasta fin del 3.º mes)
   const maxDate = useMemo(() => {
-    if (!maxAdvanceBookingMonths) return undefined;
-    const max = new Date(today);
-    max.setMonth(max.getMonth() + maxAdvanceBookingMonths);
+    const months = Number(maxAdvanceBookingMonths);
+    if (!Number.isFinite(months) || months < 1) return undefined;
+    const max = new Date(today.getFullYear(), today.getMonth(), 1);
+    max.setMonth(max.getMonth() + months);
+    max.setDate(0); // último día del mes anterior = fin del último mes permitido
     return max;
   }, [today, maxAdvanceBookingMonths]);
 
@@ -105,8 +107,15 @@ const KairoCalendar: React.FC<KairoCalendarProps> = ({
     }
   };
 
+  // "Febrero 2026" sin "de"
+  const formatMonthYear = (_locale: string | undefined, date: Date) => {
+    const month = new Intl.DateTimeFormat("es-AR", { month: "long" }).format(date);
+    const capitalized = month.charAt(0).toUpperCase() + month.slice(1);
+    return `${capitalized} ${date.getFullYear()}`;
+  };
+
   return (
-    <div className="flex justify-center items-center w-full h-full">
+    <div className="flex justify-center items-center w-full">
       <Calendar
         onChange={handleChange}
         value={value}
@@ -115,8 +124,9 @@ const KairoCalendar: React.FC<KairoCalendarProps> = ({
         prev2Label={null}
         next2Label={null}
         locale="es-AR"
+        formatMonthYear={formatMonthYear}
         tileDisabled={tileDisabled}
-        className="w-full h-full rounded-2xl border-2 border-primary shadow-sm bg-white"
+        className="w-full rounded-2xl border-2 border-primary shadow-sm bg-white"
       />
     </div>
   );

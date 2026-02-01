@@ -90,119 +90,121 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
   }, [filteredTimeSlots]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 w-full max-w-4xl lg:max-w-none mx-auto">
-      {/* Calendario - centrado en mobile */}
-      <div className="flex justify-center w-full">
-        <div className="w-full max-w-[320px] lg:max-w-none mx-auto">
-          <KairoCalendar
-            value={value}
-            onChange={onChangeDate}
-            enabledDays={enabledDays}
-            dateOverrides={dateOverrides}
-            maxAdvanceBookingMonths={maxAdvanceBookingMonths}
-          />
+    <div className="flex flex-col w-full max-w-4xl lg:max-w-none mx-auto gap-6">
+      {/* Contenedor Calendario + Horarios: altura dinámica (6 filas). El botón Continuar va debajo. */}
+      <div className="flex-shrink-0 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-stretch w-full">
+        {/* Calendario: altura intrínseca (aspect-ratio 6 filas) — define el alto del row */}
+        <div className="w-full flex justify-center lg:justify-start self-start">
+          <div className="w-full max-w-[260px] lg:max-w-none lg:w-full">
+            <KairoCalendar
+              value={value}
+              onChange={onChangeDate}
+              enabledDays={enabledDays}
+              dateOverrides={dateOverrides}
+              maxAdvanceBookingMonths={maxAdvanceBookingMonths}
+            />
+          </div>
+        </div>
+
+        {/* Horarios: en desktop mismo alto que calendario (absolute); en móvil en flujo; scroll en la lista */}
+        <div className="relative w-full min-h-0">
+          <div
+            className="lg:absolute lg:inset-0 lg:border-l lg:border-gray-100 lg:pl-8 pt-2 lg:pt-0 flex flex-col min-h-0 overflow-hidden"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+          {/* Selector de duración */}
+          {sortedDurations.length > 1 && onSelectDuration && (
+            <div className="mb-4 shrink-0">
+              <p className="text-sm font-medium text-gray-700 mb-2">Duración de la reunión</p>
+              <div className="flex flex-wrap gap-2">
+                {sortedDurations.map((duration) => {
+                  const isSelected = selectedDuration === duration;
+                  return (
+                    <button
+                      key={duration}
+                      type="button"
+                      onClick={() => {
+                        onSelectDuration(isSelected ? null : duration);
+                        if (!isSelected) {
+                          onSelectSlotHour(null as any);
+                        }
+                      }}
+                      className={cn(
+                        "px-4 py-2 rounded-full text-sm border transition-all duration-150 cursor-pointer",
+                        isSelected
+                          ? "bg-orange-50 border-orange-500 text-gray-900 font-medium"
+                          : "bg-white border-gray-200 text-gray-700 hover:border-orange-300"
+                      )}
+                    >
+                      {duration} min
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {!hasDateSelected ? (
+            <div className="flex-1 flex flex-col justify-center items-center py-4 text-center min-h-0">
+              <p className="text-gray-500 text-sm">
+                Seleccioná una fecha en el calendario para ver los horarios disponibles.
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-gray-600 mb-3 shrink-0">Elegí un horario:</p>
+              <div className="grid grid-cols-2 gap-3 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-2 content-start">
+                {formattedTimeSlots.map((slot, index) => {
+                  const isSelected =
+                    selectedSlotHour === slot.hour &&
+                    (selectedSlotMinute === undefined || selectedSlotMinute === (slot.minute ?? 0));
+                  const isDisabled = slot.disabled ?? false;
+
+                  return (
+                    <button
+                      key={`${slot.hour}-${slot.minute ?? 0}-${index}`}
+                      type="button"
+                      onClick={() => !isDisabled && onSelectSlotHour(slot.hour, slot.minute)}
+                      disabled={isDisabled}
+                      className={cn(
+                        "relative py-3 px-4 rounded-full text-center transition-all duration-150 tracking-wide shrink-0",
+                        isDisabled
+                          ? "bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100"
+                          : "cursor-pointer",
+                        !isDisabled && isSelected
+                          ? "bg-orange-500 text-white shadow-lg shadow-orange-500/30 font-medium"
+                          : !isDisabled &&
+                            "bg-white border border-gray-200 text-gray-900 hover:border-orange-400 hover:bg-orange-50"
+                      )}
+                    >
+                      {slot.labelAMPM}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
+      </div>
 
-      {/* Panel de horarios - sin borde izquierdo en mobile, centrado */}
-      <div className="lg:border-l lg:border-gray-100 lg:pl-8 pt-2 lg:pt-0 w-full flex flex-col items-center lg:items-start" style={{ fontFamily: 'Inter, sans-serif' }}>
-        <div className="w-full max-w-sm lg:max-w-none">
-          <h3 className="hidden lg:block text-xl font-bold text-gray-900 mb-1 text-left">
-            Horarios disponibles
-          </h3>
-          <p className="hidden lg:block text-sm text-gray-500 mb-4 text-left">
-            Seleccioná un horario para continuar
-          </p>
-
-        {/* Selector de duración - Inter Regular */}
-        {sortedDurations.length > 1 && onSelectDuration && (
-          <div className="mb-6">
-            <p className="text-sm font-medium text-gray-700 mb-2">Duración de la reunión</p>
-            <div className="flex flex-wrap gap-2">
-              {sortedDurations.map((duration) => {
-                const isSelected = selectedDuration === duration;
-                return (
-                  <button
-                    key={duration}
-                    type="button"
-                    onClick={() => {
-                      onSelectDuration(isSelected ? null : duration);
-                      if (!isSelected) {
-                        onSelectSlotHour(null as any);
-                      }
-                    }}
-                    className={cn(
-                      "px-4 py-2 rounded-full text-sm border transition-all duration-150 cursor-pointer",
-                      isSelected
-                        ? "bg-orange-50 border-orange-500 text-gray-900 font-medium"
-                        : "bg-white border-gray-200 text-gray-700 hover:border-orange-300"
-                    )}
-                  >
-                    {duration} min
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {!hasDateSelected ? (
-          <div className="flex flex-col justify-center items-center py-16 text-center">
-            <p className="text-gray-500">
-              Seleccioná una fecha en el calendario para ver los horarios disponibles.
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Grid de horarios - Inter Regular/Medium */}
-            <div className="grid grid-cols-2 gap-3 mb-6 max-h-[300px] overflow-y-auto pr-2">
-              {formattedTimeSlots.map((slot, index) => {
-                const isSelected =
-                  selectedSlotHour === slot.hour &&
-                  (selectedSlotMinute === undefined || selectedSlotMinute === (slot.minute ?? 0));
-                const isDisabled = slot.disabled || false;
-
-                return (
-                  <button
-                    key={`${slot.hour}-${slot.minute ?? 0}-${index}`}
-                    type="button"
-                    onClick={() => !isDisabled && onSelectSlotHour(slot.hour, slot.minute)}
-                    disabled={isDisabled}
-                    className={cn(
-                      "relative py-3 px-4 rounded-full text-center transition-all duration-150 tracking-wide",
-                      isDisabled
-                        ? "bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100"
-                        : "cursor-pointer",
-                      !isDisabled && isSelected
-                        ? "bg-orange-500 text-white shadow-lg shadow-orange-500/30 font-medium"
-                        : !isDisabled && "bg-white border border-gray-200 text-gray-900 hover:border-orange-400 hover:bg-orange-50"
-                    )}
-                  >
-                    {slot.labelAMPM}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Botón Continuar - mismo estilo que Siguiente del step 2 */}
-            <Button
-              type="button"
-              variant="default"
-              size="md"
-              onClick={onContinue}
-              disabled={!canContinue}
-              className="w-full font-semibold text-white bg-[#FF6600] hover:bg-[#E55F00]"
-              style={{
-                fontFamily: "Inter, sans-serif",
-                fontSize: "16px",
-                fontWeight: 600,
-              }}
-            >
-              Continuar
-            </Button>
-          </>
-        )}
-        </div>
+      {/* Botón Continuar siempre debajo del contenedor Calendario + Horarios */}
+      <div className="flex-shrink-0 flex justify-start w-full mt-2">
+        <Button
+          type="button"
+          variant="default"
+          size="md"
+          onClick={onContinue}
+          disabled={!canContinue}
+          className="font-semibold text-white bg-[#FF6600] hover:bg-[#E55F00]"
+          style={{
+            fontFamily: "Inter, sans-serif",
+            fontSize: "16px",
+            fontWeight: 600,
+          }}
+        >
+          Continuar
+        </Button>
       </div>
     </div>
   );

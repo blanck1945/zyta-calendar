@@ -1,11 +1,24 @@
 /* Zyta Scheduler - Calendar Styles */
 
+/* Calendario: altura dinámica según contenido (grid 6 filas con aspect-ratio 7/6) */
 .react-calendar {
   background: transparent;
   border: none;
   font-family: 'Inter', sans-serif;
   width: 100%;
   max-width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.react-calendar__viewContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.react-calendar__month-view {
+  display: flex;
+  flex-direction: column;
 }
 
 /* Navegación del mes */
@@ -13,19 +26,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0;
+  flex-shrink: 0;
 }
 
 .react-calendar__navigation button {
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  width: 36px;
-  height: 36px;
+  border-radius: 6px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 15px;
   color: #374151;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -43,7 +58,7 @@
 
 .react-calendar__navigation__label {
   font-weight: 600;
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   color: #111827;
   background: transparent !important;
   border: none !important;
@@ -60,36 +75,42 @@
   text-align: center;
   text-transform: uppercase;
   font-weight: 600;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   color: #9ca3af;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.125rem;
+  flex-shrink: 0;
 }
 
 .react-calendar__month-view__weekdays__weekday {
-  padding: 0.25rem;
+  padding: 0.125rem;
 }
 
 .react-calendar__month-view__weekdays__weekday abbr {
   text-decoration: none;
 }
 
-/* Grid de días */
+/* Grid de días: 7 columnas; filas implícitas (4, 5 o 6 según el mes); altura según contenido */
 .react-calendar__month-view__days {
   display: grid !important;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+  gap: 1px;
+  width: 100%;
 }
 
-/* Día individual - circular - Inter Regular */
+/* Día individual - circular un poco más chico; aspect-ratio 1 para la fila */
 .react-calendar__tile {
   background: none;
   border: none;
   aspect-ratio: 1;
+  min-height: 0;
+  max-width: 88%;
+  max-height: 88%;
+  margin: auto;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   font-weight: 400;
   color: #111827;
   cursor: pointer;

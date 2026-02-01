@@ -23,6 +23,7 @@ import {
 } from "./hooks/useCalendarSchedule";
 import { useCreateMercadoPagoPreference } from "./hooks/useCreateMercadoPagoPreference";
 import { useCreateAppointment } from "./hooks/useCreateAppointment";
+import SocialLinks from "./components/SocialLinks/SocialLinks";
 import type { ThemeName, ExtraThemeName } from "./themes";
 import {
   styleVariants,
@@ -1035,8 +1036,8 @@ function App() {
         try {
           const data = await createPreferenceMutation.mutateAsync({
             calendarSlug,
-            amount: 5000.0,
-            currency: "ARS",
+            amount: schedule?.amount ?? 0,
+            currency: schedule?.currency ?? "ARS",
             successUrl,
             failureUrl,
             pendingUrl,
@@ -1184,8 +1185,8 @@ function App() {
             className="w-[90%] mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden"
             style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}
           >
-            {/* Stepper - Inter Medium (500), 14px; en mobile centrado y compacto */}
-            <div className="px-4 md:px-8 py-4 md:py-5 border-b border-gray-100 text-sm" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 500 }}>
+            {/* Stepper + links (solo desktop) en la parte superior del contenedor */}
+            <div className="px-4 md:px-8 py-4 md:py-5 border-b border-gray-100 text-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 500 }}>
               <div className="flex items-center justify-center md:justify-start gap-2 md:gap-6 overflow-x-auto min-h-[44px]">
                 {stepperItems.map((item, idx) => (
                   <div key={item.num} className="flex items-center shrink-0">
@@ -1222,6 +1223,12 @@ function App() {
                   </div>
                 ))}
               </div>
+              {/* Links con iconos: solo en desktop, esquina superior derecha */}
+              {schedule?.links && schedule.links.length > 0 && (
+                <div className="hidden md:flex shrink-0">
+                  <SocialLinks links={schedule.links} />
+                </div>
+              )}
             </div>
 
             {/* Contenido principal */}
@@ -1320,6 +1327,8 @@ function App() {
                   meetingEnd={meetingEnd}
                   name={name}
                   email={email}
+                  amount={schedule?.amount}
+                  currency={schedule?.currency}
                   paymentMethod={paymentMethod}
                   onChangePaymentMethod={setPaymentMethod}
                   payments={schedule?.payments}

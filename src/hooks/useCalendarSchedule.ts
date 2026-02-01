@@ -34,6 +34,8 @@ interface CalendarResponse {
   id: string;
   clientId: string;
   calendarSlug: string;
+  amount?: number | string;
+  currency?: string | null;
   scheduling: {
     timezone: string;
     slotMinutes: number | number[];
@@ -180,6 +182,8 @@ export interface Appointment {
 
 export interface CalendarSchedule {
   calendarSlug: string;
+  amount?: number;
+  currency?: string;
   enabledDays: DayOfWeek[];
   byDay: DaySchedule;
   slotMinutes: number | number[];
@@ -207,9 +211,18 @@ function transformCalendarResponse(
   const slotMinutes = Array.isArray(response.scheduling.slotMinutes)
     ? response.scheduling.slotMinutes
     : [response.scheduling.slotMinutes];
-  
+
+  // Convertir amount a number si viene como string
+  const amount = response.amount != null
+    ? typeof response.amount === 'string'
+      ? parseFloat(response.amount)
+      : response.amount
+    : undefined;
+
   return {
     calendarSlug: response.calendarSlug,
+    amount: Number.isFinite(amount) ? amount : undefined,
+    currency: response.currency ?? undefined,
     enabledDays: response.availability.enabledDays,
     byDay: response.availability.byDay,
     slotMinutes: slotMinutes,
@@ -220,7 +233,12 @@ function transformCalendarResponse(
     theme: response.styles.theme,
     links: response.links?.filter((link) => link.isPublic) || [],
     dateOverrides: response.availability.dateOverrides || {},
-    maxAdvanceBookingMonths: response.availability.maxAdvanceBookingMonths,
+    // Meses máximos para agendar: solo bookingSettings.maxAdvanceBookingMonths
+    maxAdvanceBookingMonths: (() => {
+      const raw = response.bookingSettings?.maxAdvanceBookingMonths;
+      const n = Number(raw);
+      return Number.isFinite(n) && n >= 1 ? n : 3;
+    })(),
     payments: response.payments,
     bookingForm: response.bookingForm,
     bookingSettings: response.bookingSettings,

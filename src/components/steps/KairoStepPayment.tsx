@@ -13,6 +13,9 @@ interface KairoStepPaymentProps {
   name: string;
   email: string;
 
+  amount?: number;
+  currency?: string;
+
   paymentMethod: PaymentMethod | null;
   onChangePaymentMethod: (method: PaymentMethod) => void;
 
@@ -31,6 +34,8 @@ const formatCbuMasked = (cbu: string): string => {
 const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
   meetingStart,
   meetingEnd,
+  amount,
+  currency,
   paymentMethod,
   onChangePaymentMethod,
   payments,
@@ -250,10 +255,10 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
                 onClick={() => onChangePaymentMethod("cash")}
               >
                 <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  Efectivo
+                  A coordinar
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  {payments.cash.note}
+                  Pago a coordinar con el profesional
                 </p>
               </Card>
             )}
@@ -296,7 +301,9 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
               {formattedResumenDate}
             </p>
             <p className="text-sm text-gray-600">
-              Monto: $ — (lo define el abogado al confirmar)
+              Monto: {amount != null
+                ? `${currency ?? '$'} ${amount.toLocaleString('es-AR')}`
+                : '$ — (lo define el abogado al confirmar)'}
             </p>
           </Card>
         )}
