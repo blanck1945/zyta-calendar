@@ -1,18 +1,16 @@
 // src/components/steps/KairoStepSchedule.tsx
-import { useMemo, useEffect, useState } from "react";
+import { useMemo } from "react";
 import KairoCalendar, { type CalendarValue } from "../KairoCalendar";
 import { Button } from "../ui/button";
 import { cn } from "../../utils/cn";
-import type { NumberFontVariant } from "../../utils/numberFontVariants";
-import { getNumberFontVariantClass } from "../../utils/numberFontVariants";
 import type { DayOfWeek } from "../../hooks/useCalendarSchedule";
 
 export type TimeSlot = {
   hour: number;
-  minute?: number; // Minutos (0-59), opcional para compatibilidad
+  minute?: number;
   label: string;
-  disabled?: boolean; // Si está ocupado o no disponible
-  duration?: number; // Duración del slot en minutos
+  disabled?: boolean;
+  duration?: number;
 };
 
 export type TimeSlotVariant = "grid" | "list" | "timeline";
@@ -20,40 +18,24 @@ export type TimeSlotVariant = "grid" | "list" | "timeline";
 interface KairoStepScheduleProps {
   value: CalendarValue;
   onChangeDate: (value: CalendarValue) => void;
-
   selectedSlotHour: number | null;
   selectedSlotMinute?: number | null;
   onSelectSlotHour: (hour: number, minute?: number) => void;
-
   timeSlots: TimeSlot[];
   formattedSelection: string;
-
   canContinue: boolean;
   onContinue: () => void;
-  enabledDays?: DayOfWeek[]; // Días habilitados para pasar al calendario
-  timeSlotVariant?: TimeSlotVariant; // Variante de visualización de horarios
+  enabledDays?: DayOfWeek[];
+  timeSlotVariant?: TimeSlotVariant;
   dateOverrides?: Record<string, { disabled?: boolean; timeRanges?: Array<{ start: string; end: string }> }>;
   maxAdvanceBookingMonths?: number;
-  
-  // Nuevas props para duración
-  availableDurations?: number[]; // Duraciones disponibles en minutos
-  selectedDuration?: number | null; // Duración seleccionada
-  onSelectDuration?: (duration: number | null) => void; // Callback al seleccionar duración
+  availableDurations?: number[];
+  selectedDuration?: number | null;
+  onSelectDuration?: (duration: number | null) => void;
 }
 
-// Función helper para formatear hora en formato 24h
 const formatHour24h = (hour: number, minute: number = 0): string => {
-  const hourStr = hour.toString().padStart(2, "0");
-  const minuteStr = minute.toString().padStart(2, "0");
-  return `${hourStr}:${minuteStr}`;
-};
-
-// Función para convertir hora:minuto string a formato 24h
-const formatTimeString24h = (timeStr: string): string => {
-  const [hourStr, minuteStr] = timeStr.split(":");
-  const hour = parseInt(hourStr, 10);
-  const minute = parseInt(minuteStr || "0", 10);
-  return formatHour24h(hour, minute);
+  return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
 };
 
 const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
@@ -78,270 +60,151 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
     [formattedSelection]
   );
 
-  // Ordenar duraciones disponibles de menor a mayor
-  const sortedAvailableDurations = useMemo(() => {
+  // Ordenar duraciones de menor a mayor
+  const sortedDurations = useMemo(() => {
     return [...availableDurations].sort((a, b) => a - b);
   }, [availableDurations]);
 
-  // Filtrar slots por duración seleccionada si hay duraciones disponibles
+  // Filtrar slots por duración seleccionada
   const filteredTimeSlots = useMemo(() => {
+    let slots = timeSlots;
+    
     if (availableDurations.length > 0 && selectedDuration !== null && selectedDuration !== undefined) {
-      return timeSlots.filter((slot) => slot.duration === selectedDuration);
+      slots = slots.filter((slot) => slot.duration === selectedDuration);
     }
-    return timeSlots;
-  }, [timeSlots, availableDurations, selectedDuration]);
-
-  // Formatear horarios con AM/PM y ordenarlos de menor a mayor
-  const formattedTimeSlots = useMemo(() => {
-    // Ordenar slots por hora y minuto (de menor a mayor), y si hay empate, por duración
-    const sortedSlots = [...filteredTimeSlots].sort((a, b) => {
+    
+    // Ordenar por hora
+    return [...slots].sort((a, b) => {
       const aMinutes = a.hour * 60 + (a.minute ?? 0);
       const bMinutes = b.hour * 60 + (b.minute ?? 0);
-      
-      // Si tienen la misma hora de inicio, ordenar por duración (menor a mayor)
-      if (aMinutes === bMinutes) {
-        const aDuration = a.duration ?? 0;
-        const bDuration = b.duration ?? 0;
-        return aDuration - bDuration;
-      }
-      
       return aMinutes - bMinutes;
     });
+  }, [timeSlots, availableDurations, selectedDuration]);
 
-    return sortedSlots.map((slot) => {
-      // Si el slot ya tiene un label formateado (HH:mm - HH:mm), convertirlo a AM/PM
-      // Si no, generar uno desde hour y minute
-      let labelAMPM = slot.label;
-
-      // Si el label está en formato 24h (HH:mm - HH:mm), extraer solo hora de inicio
-      if (slot.label.match(/^\d{2}:\d{2} - \d{2}:\d{2}$/)) {
-        const [startTime] = slot.label.split(" - ");
-        labelAMPM = formatTimeString24h(startTime);
-      } else {
-        // Fallback: usar hour y minute directamente (solo hora de inicio)
-        const slotMinute = slot.minute ?? 0;
-        labelAMPM = formatHour24h(slot.hour, slotMinute);
-      }
-
-      return {
-        ...slot,
-        labelAMPM,
-      };
-    });
+  // Formatear slots
+  const formattedTimeSlots = useMemo(() => {
+    return filteredTimeSlots.map((slot) => ({
+      ...slot,
+      labelAMPM: formatHour24h(slot.hour, slot.minute ?? 0),
+    }));
   }, [filteredTimeSlots]);
 
-  // Obtener variante tipográfica actual
-  const [numberFontVariant, setNumberFontVariant] = useState<NumberFontVariant>(
-    () => {
-      const saved = localStorage.getItem(
-        "kairo-number-font-variant"
-      ) as NumberFontVariant;
-      return saved || "tabular";
-    }
-  );
-
-  useEffect(() => {
-    // Escuchar cambios en el atributo del documento
-    const observer = new MutationObserver(() => {
-      const variant = document.documentElement.getAttribute(
-        "data-number-font-variant"
-      ) as NumberFontVariant;
-      if (variant && variant !== numberFontVariant) {
-        setNumberFontVariant(variant);
-      }
-    });
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-number-font-variant"],
-    });
-
-    return () => observer.disconnect();
-  }, [numberFontVariant]);
-
   return (
-    <>
-      {/* Layout principal - calendario a la izquierda, horarios a la derecha */}
-      <div
-        className="grid lg:grid-cols-[40%_1fr]"
-        style={{
-          gap: "var(--style-component-gap, 2.5rem)",
-        }}
-      >
-        {/* Calendario */}
-        <div className="w-full flex justify-center items-start">
-          <div className="w-[90%] aspect-square">
-            <KairoCalendar
-              value={value}
-              onChange={onChangeDate}
-              enabledDays={enabledDays}
-              dateOverrides={dateOverrides}
-              maxAdvanceBookingMonths={maxAdvanceBookingMonths}
-            />
-          </div>
-        </div>
-
-        {/* Tiempo de reunión y horarios disponibles */}
-        <div>
-          {/* Selector de duración */}
-          {availableDurations.length > 1 && onSelectDuration && (
-            <div
-              className="mb-6"
-              style={{
-                marginBottom: "var(--style-component-gap, 2rem)",
-              }}
-            >
-              <p
-                className="font-medium text-muted-foreground mb-3 uppercase tracking-wide"
-                style={{
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 400)",
-                  letterSpacing: "var(--style-letter-spacing, -0.025em)",
-                  marginBottom: "0.75rem",
-                }}
-              >
-                Duración de la reunión
-              </p>
-              <div
-                className="flex flex-wrap gap-2"
-                style={{
-                  gap: "0.5rem",
-                }}
-              >
-                {sortedAvailableDurations.map((duration) => {
-                  const isSelected = selectedDuration === duration;
-                  return (
-                    <button
-                      key={duration}
-                      type="button"
-                      onClick={() => {
-                        // Si ya está seleccionada, deseleccionar; sino, seleccionar
-                        onSelectDuration(isSelected ? null : duration);
-                        // Si se cambia la duración, limpiar el slot seleccionado
-                        if (!isSelected) {
-                          onSelectSlotHour(null as any);
-                        }
-                      }}
-                      className={cn(
-                        "border-2 transition-all duration-200",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 active:scale-[0.99]",
-                        isSelected
-                          ? "border-primary bg-primary/5 hover:border-primary hover:bg-primary/5"
-                          : "border-border hover:border-primary hover:bg-primary/5"
-                      )}
-                      style={{
-                        padding: "var(--style-card-padding, 0.75rem 1rem)",
-                        borderRadius: "var(--style-border-radius, 0.75rem)",
-                        fontSize: "var(--style-body-size, 0.875rem)",
-                        fontWeight: "var(--style-body-weight, 500)",
-                      }}
-                    >
-                      {duration} min
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <h3
-            className="font-bold mb-2 text-foreground"
-            style={{
-              fontSize: "var(--style-title-size, 1.5rem)",
-              fontWeight: "var(--style-title-weight, 700)",
-            }}
-          >
-            Horarios disponibles
-          </h3>
-          <p
-            className="text-muted-foreground"
-            style={{
-              fontSize: "var(--style-body-size, 0.875rem)",
-              fontWeight: "var(--style-body-weight, 400)",
-              marginBottom: "var(--style-component-gap, 1.5rem)",
-            }}
-          >
-            Selecciona el horario que mejor te convenga
-          </p>
-
-          {!hasDateSelected ? (
-            <div className="flex flex-col justify-center items-center py-12">
-              <p
-                className="text-muted-foreground"
-                style={{
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 400)",
-                }}
-              >
-                Seleccioná una fecha en el calendario para ver los horarios.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div
-                className="mb-8 custom-scrollbar grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
-                style={{
-                  gap: "0.5rem",
-                  maxHeight: "60vh",
-                  overflowY: "auto",
-                  WebkitOverflowScrolling: "touch",
-                  overscrollBehavior: "contain",
-                }}
-              >
-                {formattedTimeSlots.map((slot, index) => {
-                  const isSelected =
-                    selectedSlotHour === slot.hour &&
-                    (selectedSlotMinute === undefined ||
-                      selectedSlotMinute === (slot.minute ?? 0));
-                  const isDisabled = slot.disabled || false;
-
-                  return (
-                    <button
-                      key={`${slot.hour}-${slot.minute ?? 0}-${index}`}
-                      type="button"
-                      onClick={() => !isDisabled && onSelectSlotHour(slot.hour, slot.minute)}
-                      disabled={isDisabled}
-                      className={cn(
-                        "w-full border-2 text-center font-mono transition-all duration-200",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2",
-                        getNumberFontVariantClass(numberFontVariant),
-                        isDisabled
-                          ? "border-border/50 bg-muted/30 text-muted-foreground/50 cursor-not-allowed opacity-50"
-                          : isSelected
-                          ? "border-primary bg-primary/5 hover:border-primary hover:bg-primary/5 cursor-pointer active:scale-[0.99]"
-                          : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer active:scale-[0.99]"
-                      )}
-                      style={{
-                        padding: "0.5rem 0.75rem",
-                        borderRadius: "var(--style-border-radius, 0.75rem)",
-                        fontSize: "var(--style-body-size, 0.9375rem)",
-                        fontWeight: "var(--style-body-weight, 400)",
-                      }}
-                    >
-                      {slot.labelAMPM}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <Button
-                size="lg"
-                className="w-full font-semibold"
-                onClick={onContinue}
-                disabled={!canContinue}
-                style={{
-                  height: "3.5rem",
-                  fontSize: "var(--style-button-size, 1rem)",
-                  fontWeight: "var(--style-button-weight, 600)",
-                }}
-              >
-                Continuar
-              </Button>
-            </>
-          )}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 w-full max-w-4xl lg:max-w-none mx-auto">
+      {/* Calendario - centrado en mobile */}
+      <div className="flex justify-center w-full">
+        <div className="w-full max-w-[320px] lg:max-w-none mx-auto">
+          <KairoCalendar
+            value={value}
+            onChange={onChangeDate}
+            enabledDays={enabledDays}
+            dateOverrides={dateOverrides}
+            maxAdvanceBookingMonths={maxAdvanceBookingMonths}
+          />
         </div>
       </div>
-    </>
+
+      {/* Panel de horarios - sin borde izquierdo en mobile, centrado */}
+      <div className="lg:border-l lg:border-gray-100 lg:pl-8 pt-2 lg:pt-0 w-full flex flex-col items-center lg:items-start" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="w-full max-w-sm lg:max-w-none">
+          <h3 className="hidden lg:block text-xl font-bold text-gray-900 mb-1 text-left">
+            Horarios disponibles
+          </h3>
+          <p className="hidden lg:block text-sm text-gray-500 mb-4 text-left">
+            Seleccioná un horario para continuar
+          </p>
+
+        {/* Selector de duración - Inter Regular */}
+        {sortedDurations.length > 1 && onSelectDuration && (
+          <div className="mb-6">
+            <p className="text-sm font-medium text-gray-700 mb-2">Duración de la reunión</p>
+            <div className="flex flex-wrap gap-2">
+              {sortedDurations.map((duration) => {
+                const isSelected = selectedDuration === duration;
+                return (
+                  <button
+                    key={duration}
+                    type="button"
+                    onClick={() => {
+                      onSelectDuration(isSelected ? null : duration);
+                      if (!isSelected) {
+                        onSelectSlotHour(null as any);
+                      }
+                    }}
+                    className={cn(
+                      "px-4 py-2 rounded-full text-sm border transition-all duration-150 cursor-pointer",
+                      isSelected
+                        ? "bg-orange-50 border-orange-500 text-gray-900 font-medium"
+                        : "bg-white border-gray-200 text-gray-700 hover:border-orange-300"
+                    )}
+                  >
+                    {duration} min
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {!hasDateSelected ? (
+          <div className="flex flex-col justify-center items-center py-16 text-center">
+            <p className="text-gray-500">
+              Seleccioná una fecha en el calendario para ver los horarios disponibles.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Grid de horarios - Inter Regular/Medium */}
+            <div className="grid grid-cols-2 gap-3 mb-6 max-h-[300px] overflow-y-auto pr-2">
+              {formattedTimeSlots.map((slot, index) => {
+                const isSelected =
+                  selectedSlotHour === slot.hour &&
+                  (selectedSlotMinute === undefined || selectedSlotMinute === (slot.minute ?? 0));
+                const isDisabled = slot.disabled || false;
+
+                return (
+                  <button
+                    key={`${slot.hour}-${slot.minute ?? 0}-${index}`}
+                    type="button"
+                    onClick={() => !isDisabled && onSelectSlotHour(slot.hour, slot.minute)}
+                    disabled={isDisabled}
+                    className={cn(
+                      "relative py-3 px-4 rounded-full text-center transition-all duration-150 tracking-wide",
+                      isDisabled
+                        ? "bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100"
+                        : "cursor-pointer",
+                      !isDisabled && isSelected
+                        ? "bg-orange-500 text-white shadow-lg shadow-orange-500/30 font-medium"
+                        : !isDisabled && "bg-white border border-gray-200 text-gray-900 hover:border-orange-400 hover:bg-orange-50"
+                    )}
+                  >
+                    {slot.labelAMPM}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Botón Continuar - mismo estilo que Siguiente del step 2 */}
+            <Button
+              type="button"
+              variant="default"
+              size="md"
+              onClick={onContinue}
+              disabled={!canContinue}
+              className="w-full font-semibold text-white bg-[#FF6600] hover:bg-[#E55F00]"
+              style={{
+                fontFamily: "Inter, sans-serif",
+                fontSize: "16px",
+                fontWeight: 600,
+              }}
+            >
+              Continuar
+            </Button>
+          </>
+        )}
+        </div>
+      </div>
+    </div>
   );
 };
 

@@ -1,13 +1,12 @@
 // src/App.tsx
 import { useMemo, useEffect, useRef, useState, lazy, Suspense } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check } from "lucide-react";
 import { useYourIdAuth } from "./sdk/useYourIDAuth";
 import KairoStepSchedule, {
   type TimeSlot,
   type TimeSlotVariant,
 } from "./components/steps/KairoStepSchedule";
 import type { CalendarValue } from "./components/KairoCalendar";
-import { SocialLinks } from "./components/SocialLinks/SocialLinks";
 
 // Lazy: cargar Form y Payment solo cuando el usuario llega a ese paso → menos JS inicial, app más rápida
 const KairoStepForm = lazy(() => import("./components/steps/KairoStepForm"));
@@ -320,13 +319,11 @@ function App() {
     env: import.meta.env.VITE_ENV, // "dev" | "prod"
   });
 
-  // Preload del siguiente paso: el chunk se descarga en segundo plano para que "Continuar" sea instantáneo
+  // Preload de step 2 y 3 al montar: los chunks se descargan en segundo plano para que al cambiar de paso no haya carga visible
   useEffect(() => {
-    if (step === 1 && schedule) void import("./components/steps/KairoStepForm");
-  }, [step, schedule]);
-  useEffect(() => {
-    if (step === 2) void import("./components/steps/KairoStepPayment");
-  }, [step]);
+    void import("./components/steps/KairoStepForm");
+    void import("./components/steps/KairoStepPayment");
+  }, []);
 
   // Aplicar el tema del calendario cuando se carga el schedule (solo la primera vez)
   const hasAppliedCalendarTheme = useRef(false);
@@ -996,9 +993,12 @@ function App() {
     createAppointmentMutation.isPending ||
     createPreferenceMutation.isPending;
 
-  const handleConfirmReservation = async () => {
-    if (!meetingStart || !meetingEnd || !paymentMethod || !name || !email)
+  const handleConfirmReservation = async (method?: typeof paymentMethod, transferProofFile?: File | null) => {
+    const effectiveMethod = method ?? paymentMethod;
+    if (!meetingStart || !meetingEnd || !effectiveMethod || !name || !email)
       return;
+    if (method) setPaymentMethod(method);
+    void transferProofFile; // disponible para cuando el backend soporte subida de comprobante
 
     const calendarSlug = schedule?.calendarSlug;
 
@@ -1017,7 +1017,7 @@ function App() {
         clientEmail: email,
         clientPhone: phone || undefined,
         startTime: meetingStart.toISOString(),
-        paymentMethod: paymentMethod,
+        paymentMethod: effectiveMethod,
         notes: query || undefined,
         duration: selectedDuration || undefined,
       });
@@ -1025,7 +1025,7 @@ function App() {
       console.log("Cita creada exitosamente:", appointment);
 
       // Según el método de pago, proceder con el flujo correspondiente
-      if (paymentMethod === "mercadopago") {
+      if (effectiveMethod === "mercadopago") {
         // Construir las URLs de redirección basadas en el origen actual
         const baseUrl = window.location.origin;
         const successUrl = `${baseUrl}/payment/success`;
@@ -1049,7 +1049,7 @@ function App() {
           console.error("Error al crear preferencia MP", err);
           setIsConfirmingReservation(false);
         }
-      } else if (paymentMethod === "transfer" || paymentMethod === "cash" || paymentMethod === "coordinar") {
+      } else if (effectiveMethod === "transfer" || effectiveMethod === "cash" || effectiveMethod === "coordinar") {
         // Guardar datos para la página de confirmación y redirigir
         const bookingData = {
           appointmentId: appointment.id,
@@ -1058,14 +1058,14 @@ function App() {
           clientEmail: email,
           startTime: meetingStart.toISOString(),
           endTime: meetingEnd?.toISOString(),
-          paymentMethod,
+          paymentMethod: effectiveMethod,
           confirmedAt: new Date().toISOString(),
         };
         localStorage.setItem("lastBooking", JSON.stringify(bookingData));
 
         const params = new URLSearchParams({
           calendarSlug,
-          method: paymentMethod,
+          method: effectiveMethod,
           name: encodeURIComponent(name),
         });
         resetBooking();
@@ -1092,7 +1092,7 @@ function App() {
     );
   }, [schedule?.calendarSubtitle]);
 
-  // Títulos y subtítulos dinámicos
+  // Títulos y subtítulos dinámicos (guía: Inter Extra Bold 800, 32–36px, #FFFFFF)
   const stepTitles = useMemo(() => {
     switch (step) {
       case 1:
@@ -1102,25 +1102,17 @@ function App() {
         };
       case 2:
         return {
-          title: name ? `Hola, ${name}!` : "Datos del meet",
+          title: "Completá tus datos",
           subtitle: name
             ? "Completá los datos restantes para continuar"
             : "Completá tus datos para continuar con el modo de pago.",
         };
       case 3:
         return {
-          title: paymentMethod
-            ? paymentMethod === "mercadopago"
-              ? "Pago con Mercado Pago"
-              : paymentMethod === "transfer"
-              ? "Transferencia bancaria"
-              : paymentMethod === "cash"
-              ? "Pago en efectivo"
-              : "Modo de pago"
-            : "Modo de pago",
+          title: "Pago y confirmación",
           subtitle: paymentMethod
             ? "Confirmá tu reserva para finalizar"
-            : "Elegí cómo querés completar el pago para confirmar tu meet.",
+            : "Elegí cómo querés completar el pago para confirmar tu turno.",
         };
       default:
         return {
@@ -1130,155 +1122,111 @@ function App() {
     }
   }, [step, name, paymentMethod, step1Title, step1Subtitle]);
 
+  // Stepper config
+  const stepperItems = [
+    { num: 1, label: "Elegí turno" },
+    { num: 2, label: "Tus datos" },
+    { num: 3, label: "Pago" },
+  ];
+
   return (
-    <div className="min-h-screen bg-background relative">
-      {/* Overlay de carga al confirmar reserva: evita ver el calendario antes de la redirección */}
+    <div 
+      className="min-h-screen relative"
+      style={{
+        backgroundColor: '#0a0a0a',
+        backgroundImage: 'url(/muestras/banner.jpeg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+      }}
+    >
+      {/* Overlay oscuro para legibilidad */}
+      <div className="absolute inset-0 bg-black/60" />
+      
+      {/* Overlay de carga al confirmar reserva */}
       {isConfirming && (
         <div
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-background/95 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-black/90 backdrop-blur-sm"
           aria-live="polite"
           aria-busy="true"
         >
-          <Loader2
-            className="h-12 w-12 animate-spin text-primary"
-            aria-hidden
-          />
-          <p
-            className="text-lg font-medium text-foreground"
-            style={{
-              fontSize: "var(--style-body-size, 1rem)",
-              fontWeight: "var(--style-body-weight, 500)",
-            }}
-          >
-            {createPreferenceMutation.isPending
-              ? "Redirigiendo a Mercado Pago..."
-              : "Confirmando tu reserva..."}
+          <Loader2 className="h-12 w-12 animate-spin text-orange-500" aria-hidden />
+          <p className="text-lg font-medium text-white">
+            {createPreferenceMutation.isPending ? "Redirigiendo a Mercado Pago..." : "Confirmando tu reserva..."}
           </p>
-          <p className="text-sm text-muted-foreground">
-            No cierres esta ventana
-          </p>
+          <p className="text-sm text-gray-400">No cierres esta ventana</p>
         </div>
       )}
 
-      <main
-        className="max-w-7xl mx-auto"
-        style={{
-          padding: "var(--style-container-padding, 2rem 1rem)",
-        }}
-      >
-        {/* Header con mejor jerarquía */}
-        <div
-          className="flex items-start justify-between gap-4"
-          style={{
-            marginBottom: "var(--style-component-gap, 3rem)",
-          }}
-        >
-          {scheduleLoading ? (
-            /* Skeleton del header mientras carga - mismo tamaño para evitar layout shift */
-            <div className="flex-1 animate-pulse">
-              <div 
-                className="h-9 w-64 bg-muted rounded mb-3"
-                style={{ maxWidth: "70%" }}
-              />
-              <div 
-                className="h-5 w-96 bg-muted/70 rounded"
-                style={{ maxWidth: "90%" }}
-              />
-            </div>
-          ) : (
-            <div className="flex-1">
-              <h1
-                className="text-foreground mb-3 tracking-tight"
-                style={{
-                  fontSize: "var(--style-title-size, 2.25rem)",
-                  fontWeight: "var(--style-title-weight, 700)",
-                  letterSpacing: "var(--style-letter-spacing, -0.025em)",
-                  lineHeight: "var(--style-line-height, 1.2)",
-                }}
-              >
-                {stepTitles.title}
-              </h1>
-              <p
-                className="text-muted-foreground"
-                style={{
-                  fontSize: "var(--style-subtitle-size, 1.125rem)",
-                  fontWeight: "var(--style-subtitle-weight, 400)",
-                  letterSpacing: "var(--style-letter-spacing, -0.025em)",
-                  lineHeight: "var(--style-line-height, 1.2)",
-                }}
-              >
-                {stepTitles.subtitle}
-              </p>
-            </div>
-          )}
-          {schedule?.links && schedule.links.length > 0 && (
-            <div className="shrink-0">
-              <SocialLinks links={schedule.links} />
-            </div>
-          )}
-        </div>
-
-        {/* Botones de prueba para desarrollo - Solo visibles en DEV */}
-        {import.meta.env.DEV && (
-          <div className="mb-4 p-4 bg-yellow-100 border-2 border-yellow-400 rounded-lg">
-            <p className="text-sm font-semibold text-yellow-900 mb-2">🛠️ Modo Desarrollo - Botones de Prueba</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => {
-                  // Simular datos de reserva exitosa
-                  const testBookingData = {
-                    appointmentId: "test-123",
-                    calendarSlug: schedule?.calendarSlug || "test-calendar",
-                    clientName: "Usuario de Prueba",
-                    clientEmail: "test@ejemplo.com",
-                    startTime: new Date().toISOString(),
-                    endTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-                    paymentMethod: "mercadopago",
-                    confirmedAt: new Date().toISOString(),
-                  };
-                  localStorage.setItem("lastBooking", JSON.stringify(testBookingData));
-                  window.location.href = `/payment/success?calendarSlug=${schedule?.calendarSlug || "test"}&method=mercadopago&name=Usuario%20de%20Prueba`;
-                }}
-                className="px-3 py-2 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700"
-              >
-                Ver Payment Success
-              </button>
-              <button
-                onClick={() => {
-                  const testFormData = {
-                    name: "Usuario de Prueba",
-                    email: "test@ejemplo.com",
-                    phone: "+54 11 1234-5678",
-                    query: "Esta es una consulta de prueba para verificar el diseño.",
-                  };
-                  localStorage.setItem("bookingFormData", JSON.stringify(testFormData));
-                  window.location.href = `/case-under-review?calendarSlug=${schedule?.calendarSlug || "test"}&userName=Usuario%20de%20Prueba`;
-                }}
-                className="px-3 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700"
-              >
-                Ver Case Under Review
-              </button>
-              <button
-                onClick={() => {
-                  window.location.href = `/payment/pending?calendarSlug=${schedule?.calendarSlug || "test"}`;
-                }}
-                className="px-3 py-2 bg-yellow-600 text-white rounded text-sm font-medium hover:bg-yellow-700"
-              >
-                Ver Payment Pending
-              </button>
-              <button
-                onClick={() => {
-                  window.location.href = `/payment/failure?calendarSlug=${schedule?.calendarSlug || "test"}`;
-                }}
-                className="px-3 py-2 bg-red-600 text-white rounded text-sm font-medium hover:bg-red-700"
-              >
-                Ver Payment Failure
-              </button>
-            </div>
+      <div className="relative z-10 min-h-screen">
+        {/* Header superior */}
+        <header className="px-4 md:px-8 pt-8 pb-6">
+          <div className="max-w-[90%] mx-auto">
+            {/* Título principal - Inter Extra Bold 800, 32–36px, #FFFFFF */}
+            <h1 
+              className="text-white font-extrabold mb-3 tracking-tight text-[32px] md:text-[34px] lg:text-[36px]"
+              style={{ fontFamily: 'Inter, sans-serif', color: '#FFFFFF' }}
+            >
+              {stepTitles.title}
+            </h1>
+            <p 
+              className="text-gray-400 text-base md:text-lg max-w-2xl"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
+              {stepTitles.subtitle}
+            </p>
           </div>
-        )}
+        </header>
 
-        <section>
+        {/* Sheet blanco flotante */}
+        <main className="px-4 md:px-8 pb-8">
+          <div 
+            className="w-[90%] mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden"
+            style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}
+          >
+            {/* Stepper - Inter Medium (500), 14px; en mobile centrado y compacto */}
+            <div className="px-4 md:px-8 py-4 md:py-5 border-b border-gray-100 text-sm" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 500 }}>
+              <div className="flex items-center justify-center md:justify-start gap-2 md:gap-6 overflow-x-auto min-h-[44px]">
+                {stepperItems.map((item, idx) => (
+                  <div key={item.num} className="flex items-center shrink-0">
+                    <div className="flex items-center gap-2 md:gap-3 whitespace-nowrap">
+                      <span 
+                        className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm font-medium shrink-0 ${
+                          step === item.num 
+                            ? 'text-white' 
+                            : step > item.num 
+                              ? 'bg-green-100 text-green-600'
+                              : 'bg-[#E5E5E5] text-[#999999]'
+                        }`}
+                        style={step === item.num ? { backgroundColor: '#FF6600' } : undefined}
+                      >
+                        {step > item.num ? <Check className="h-3.5 w-3.5 md:h-4 md:w-4" strokeWidth={2.5} /> : item.num}
+                      </span>
+                      <span 
+                        className="font-medium"
+                        style={{
+                          fontSize: '14px',
+                          fontWeight: 500,
+                          color: step === item.num ? '#333333' : step > item.num ? 'var(--color-green-600, #16a34a)' : '#999999',
+                        }}
+                      >
+                        {item.label}
+                      </span>
+                    </div>
+                    {idx < stepperItems.length - 1 && (
+                      <div 
+                        className={`w-6 md:w-16 mx-1 md:mx-4 border-t ${step > item.num ? 'border-orange-300' : 'border-gray-200'} border-dashed shrink-0`}
+                        style={{ borderColor: step > item.num ? undefined : '#999999' }}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Contenido principal */}
+            <div className="p-6 md:p-8">
+              <section>
           {step === 1 && (
             <>
               {scheduleLoading && (
@@ -1380,8 +1328,11 @@ function App() {
                 />
               </Suspense>
             )}
-        </section>
-      </main>
+              </section>
+            </div>
+          </div>
+        </main>
+      </div>
 
       {/* Menú de desarrollo: solo en dev (no se monta en producción) */}
       {import.meta.env.DEV && (

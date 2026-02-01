@@ -1,151 +1,141 @@
-/* Estilos personalizados para react-calendar con el theme de Kairo */
+/* Zyta Scheduler - Calendar Styles */
 
 .react-calendar {
-  background: white;
+  background: transparent;
   border: none;
-  font-family: inherit;
-  padding: 2rem;
-  margin: 0 auto;
-  width: 90%;
-  max-width: 90%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  font-family: 'Inter', sans-serif;
+  width: 100%;
+  max-width: 100%;
 }
 
+/* Navegación del mes */
 .react-calendar__navigation {
   display: flex;
-  height: 64px;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
 }
 
 .react-calendar__navigation button {
-  min-width: 56px;
-  background: none;
-  font-size: 18px;
-  font-weight: 600;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
   color: #374151;
-  border: none;
-  padding: 1rem;
-  transition: all 0.2s;
-  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.react-calendar__navigation button:hover {
-  background: #f3f4f6;
-  border-radius: 0.75rem;
-}
-
-.react-calendar__navigation button:enabled:hover,
-.react-calendar__navigation button:enabled:focus {
-  background: #f3f4f6;
-  border-radius: 0.75rem;
+.react-calendar__navigation button:hover:enabled {
+  border-color: #f97316;
+  background: #fff7ed;
 }
 
 .react-calendar__navigation button[disabled] {
   opacity: 0.3;
+  cursor: not-allowed;
 }
 
+.react-calendar__navigation__label {
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: #111827;
+  background: transparent !important;
+  border: none !important;
+  cursor: default !important;
+  text-transform: capitalize;
+}
+
+.react-calendar__navigation__label:hover {
+  background: transparent !important;
+}
+
+/* Días de la semana */
 .react-calendar__month-view__weekdays {
   text-align: center;
   text-transform: uppercase;
   font-weight: 600;
-  font-size: 0.875rem;
-  color: #6b7280;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e5e7eb;
-  margin-bottom: 0.75rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-bottom: 0.25rem;
 }
 
 .react-calendar__month-view__weekdays__weekday {
-  padding: 0.75rem 0.5rem;
+  padding: 0.25rem;
 }
 
+.react-calendar__month-view__weekdays__weekday abbr {
+  text-decoration: none;
+}
+
+/* Grid de días */
 .react-calendar__month-view__days {
   display: grid !important;
   grid-template-columns: repeat(7, 1fr);
-  gap: 0.5rem;
+  gap: 2px;
 }
 
+/* Día individual - circular - Inter Regular */
 .react-calendar__tile {
-  max-width: 100%;
-  padding: 1.25rem 0.75rem;
   background: none;
-  text-align: center;
-  line-height: 1.5;
-  font-size: 1rem;
-  color: #374151;
   border: none;
-  border-radius: 1rem;
-  transition: all 0.2s ease;
   aspect-ratio: 1;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: #111827;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
 }
 
-.react-calendar__tile:enabled:hover,
-.react-calendar__tile:enabled:focus {
-  background: var(--color-secondary-50);
-  color: var(--color-secondary-700);
-  border-radius: 1rem;
-  transform: scale(1.05);
+.react-calendar__tile:enabled:hover {
+  background: #fff7ed;
 }
 
+/* Hoy */
 .react-calendar__tile--now {
   background: #f3f4f6;
-  color: #111827;
   font-weight: 600;
-  border-radius: 1rem;
 }
 
-.react-calendar__tile--now:enabled:hover,
-.react-calendar__tile--now:enabled:focus {
-  background: var(--color-secondary-100);
-  color: var(--color-secondary-700);
-  border-radius: 1rem;
-  transform: scale(1.05);
+.react-calendar__tile--now:enabled:hover {
+  background: #fff7ed;
 }
 
-.react-calendar__tile--hasActive {
-  background: var(--color-secondary-100);
-  color: var(--color-secondary-700);
-  border-radius: 1rem;
-}
-
-.react-calendar__tile--hasActive:enabled:hover,
-.react-calendar__tile--hasActive:enabled:focus {
-  background: var(--color-secondary-200);
-  color: var(--color-secondary-800);
-  border-radius: 1rem;
-  transform: scale(1.05);
-}
-
+/* Día seleccionado - naranja - Inter Medium */
 .react-calendar__tile--active {
-  background: var(--color-primary-600) !important;
+  background: #f97316 !important;
   color: white !important;
-  font-weight: 600;
-  border-radius: 1rem !important;
-  box-shadow: 0 4px 6px -1px rgb(79 70 229 / 0.3);
+  font-weight: 500;
 }
 
-.react-calendar__tile--active:enabled:hover,
-.react-calendar__tile--active:enabled:focus {
-  background: var(--color-primary-700) !important;
-  border-radius: 1rem !important;
-  transform: scale(1.05);
-  box-shadow: 0 6px 8px -2px rgb(79 70 229 / 0.4);
+.react-calendar__tile--active:enabled:hover {
+  background: #ea580c !important;
 }
 
+/* Días deshabilitados - tachados */
+.react-calendar__tile:disabled,
 .react-calendar__tile--disabled {
-  background-color: #f9fafb;
   color: #d1d5db;
   cursor: not-allowed;
-  border-radius: 1rem;
+  text-decoration: line-through;
+  background: transparent !important;
 }
 
+.react-calendar__tile:disabled:hover {
+  background: transparent !important;
+}
+
+/* Días del mes anterior/siguiente */
 .react-calendar__tile--neighboringMonth {
-  color: #9ca3af;
+  color: #d1d5db;
 }

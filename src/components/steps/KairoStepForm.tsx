@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Calendar, Clock, User, Mail, MessageSquare, Upload, File, X, Phone, AlertCircle, Loader2 } from "lucide-react";
+import { User, Mail, MessageSquare, Upload, File, X, Phone, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import type { BookingForm } from "../../hooks/useCalendarSchedule";
@@ -224,95 +224,12 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
 
   return (
     <>
-      {/* Resumen fecha + horario mejorado */}
-      <Card
-        className="mb-6"
-        style={{
-          padding: "var(--style-card-padding, 1.25rem)",
-        }}
-      >
-        <div className="flex items-start gap-3">
-          <div
-            className="shrink-0 rounded-full p-2"
-            style={{
-              backgroundColor: "var(--primary)",
-              color: "var(--primary-foreground)",
-            }}
-          >
-            <Calendar className="h-4 w-4" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p
-              className="font-semibold text-foreground mb-1"
-              style={{
-                fontSize: "var(--style-body-size, 0.875rem)",
-                fontWeight: "var(--style-body-weight, 500)",
-              }}
-            >
-              Fecha y horario seleccionados
-            </p>
-            {meetingStart && meetingEnd ? (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span
-                    style={{
-                      fontSize: "var(--style-body-size, 0.875rem)",
-                      fontWeight: "var(--style-body-weight, 400)",
-                    }}
-                  >
-                    {meetingStart.toLocaleDateString("es-AR", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span
-                    style={{
-                      fontSize: "var(--style-body-size, 0.875rem)",
-                      fontWeight: "var(--style-body-weight, 400)",
-                    }}
-                  >
-                    {meetingStart
-                      .toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                      .replace(" ", "")}{" "}
-                    -{" "}
-                    {meetingEnd
-                      .toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                      .replace(" ", "")}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <p
-                className="text-muted-foreground"
-                style={{
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 400)",
-                }}
-              >
-                No se encontró la fecha/horario.
-              </p>
-            )}
-          </div>
-        </div>
-      </Card>
-
       <form
         className="max-w-xl"
         onSubmit={handleSubmit(onSubmit)}
         noValidate
         style={{
+          fontFamily: "Inter, sans-serif",
           display: "flex",
           flexDirection: "column",
           gap: "var(--style-component-gap, 1.5rem)",
@@ -329,14 +246,15 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="name"
-                className="flex items-center gap-2 font-medium text-foreground"
+                className="flex items-center gap-2 text-[#000000]"
                 style={{
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 500)",
+                  fontFamily: "Inter, sans-serif",
+                  fontSize: "14px",
+                  fontWeight: 700,
                 }}
               >
                 <User className="h-4 w-4" />
-                Nombre
+                Nombre y apellido
                 {nameField.required && (
                   <span className="text-destructive" aria-label="requerido">
                     *
@@ -347,18 +265,19 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                 id="name"
                 type="text"
                 {...register("name")}
-                className={`w-full border-2 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
+                className={`w-full border-2 bg-white text-foreground placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
                   errors.name
                     ? "border-destructive focus:border-destructive"
                     : "border-input focus:border-ring"
                 }`}
                 style={{
+                  fontFamily: "Inter, sans-serif",
                   borderRadius: "var(--style-border-radius, 0.5rem)",
                   padding: "0.75rem",
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 400)",
+                  fontSize: "14px",
+                  fontWeight: 400,
                 }}
-                placeholder="Tu nombre completo"
+                placeholder="Ej: Vanesa Spano"
               />
               {errors.name && (
                 <div
@@ -378,10 +297,11 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="email"
-                className="flex items-center gap-2 font-medium text-foreground"
+                className="flex items-center gap-2 text-[#000000]"
                 style={{
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 500)",
+                  fontFamily: "Inter, sans-serif",
+                  fontSize: "14px",
+                  fontWeight: 700,
                 }}
               >
                 <Mail className="h-4 w-4" />
@@ -396,18 +316,19 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                 id="email"
                 type="email"
                 {...register("email")}
-                className={`w-full border-2 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
+                className={`w-full border-2 bg-white text-foreground placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
                   errors.email
                     ? "border-destructive focus:border-destructive"
                     : "border-input focus:border-ring"
                 }`}
                 style={{
+                  fontFamily: "Inter, sans-serif",
                   borderRadius: "var(--style-border-radius, 0.5rem)",
                   padding: "0.75rem",
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 400)",
+                  fontSize: "14px",
+                  fontWeight: 400,
                 }}
-                placeholder="tu@email.com"
+                placeholder="Ej: vane@email.com"
               />
               {errors.email && (
                 <div
@@ -427,14 +348,15 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="phone"
-                className="flex items-center gap-2 font-medium text-foreground"
+                className="flex items-center gap-2 text-[#000000]"
                 style={{
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 500)",
+                  fontFamily: "Inter, sans-serif",
+                  fontSize: "14px",
+                  fontWeight: 700,
                 }}
               >
                 <Phone className="h-4 w-4" />
-                Teléfono
+                WhatsApp
                 {phoneField.required && (
                   <span className="text-destructive" aria-label="requerido">
                     *
@@ -445,18 +367,19 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                 id="phone"
                 type="tel"
                 {...register("phone")}
-                className={`w-full border-2 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
+                className={`w-full border-2 bg-white text-foreground placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
                   errors.phone
                     ? "border-destructive focus:border-destructive"
                     : "border-input focus:border-ring"
                 }`}
                 style={{
+                  fontFamily: "Inter, sans-serif",
                   borderRadius: "var(--style-border-radius, 0.5rem)",
                   padding: "0.75rem",
-                  fontSize: "var(--style-body-size, 0.875rem)",
-                  fontWeight: "var(--style-body-weight, 400)",
+                  fontSize: "14px",
+                  fontWeight: 400,
                 }}
-                placeholder="+54 9 11 1234-5678"
+                placeholder="Ej: +54 11 5555-5555"
               />
               {errors.phone && (
                 <div
@@ -477,14 +400,15 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
           <div className="flex flex-col gap-2">
             <label
               htmlFor="query"
-              className="flex items-center gap-2 font-medium text-foreground"
+              className="flex items-center gap-2 text-[#000000]"
               style={{
-                fontSize: "var(--style-body-size, 0.875rem)",
-                fontWeight: "var(--style-body-weight, 500)",
+                fontFamily: "Inter, sans-serif",
+                fontSize: "14px",
+                fontWeight: 700,
               }}
             >
               <MessageSquare className="h-4 w-4" />
-              Consulta
+              Motivo de la consulta
               {notesField.required && (
                 <span className="text-destructive" aria-label="requerido">
                   *
@@ -495,19 +419,20 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
               id="query"
               {...register("query")}
               rows={5}
-              className={`w-full border-2 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none transition-all ${
+              className={`w-full border-2 bg-white text-foreground placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-ring resize-none transition-all ${
                 errors.query
                   ? "border-destructive focus:border-destructive"
                   : "border-input focus:border-ring"
               }`}
               style={{
+                fontFamily: "Inter, sans-serif",
                 borderRadius: "var(--style-border-radius, 0.5rem)",
                 padding: "0.75rem",
-                fontSize: "var(--style-body-size, 0.875rem)",
-                fontWeight: "var(--style-body-weight, 400)",
+                fontSize: "14px",
+                fontWeight: 400,
                 lineHeight: "1.5",
               }}
-              placeholder="Contanos brevemente el motivo del meet..."
+              placeholder="Ej: Mi prepaga rechazó cobertura de medicación. Tengo orden médica y negativa por mail. Quiero evaluar amparo."
             />
             {errors.query && (
               <div
@@ -534,10 +459,11 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                   <div key={field.id} className="flex flex-col gap-2">
                     <label
                       htmlFor={field.id}
-                      className="flex items-center gap-2 font-medium text-foreground"
+                      className="flex items-center gap-2 text-[#000000]"
                       style={{
-                        fontSize: "var(--style-body-size, 0.875rem)",
-                        fontWeight: "var(--style-body-weight, 500)",
+                        fontFamily: "Inter, sans-serif",
+                        fontSize: "14px",
+                        fontWeight: 700,
                       }}
                     >
                       {field.label}
@@ -551,19 +477,20 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                       <select
                         id={field.id}
                         {...register(field.id as keyof FormData)}
-                        className={`w-full border-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
+                        className={`w-full border-2 bg-white text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
                           fieldError
                             ? "border-destructive focus:border-destructive"
                             : "border-input focus:border-ring"
                         }`}
                         style={{
+                          fontFamily: "Inter, sans-serif",
                           borderRadius: "var(--style-border-radius, 0.5rem)",
                           padding: "0.75rem",
-                          fontSize: "var(--style-body-size, 0.875rem)",
-                          fontWeight: "var(--style-body-weight, 400)",
+                          fontSize: "14px",
+                          fontWeight: 400,
                         }}
                       >
-                        <option value="">Selecciona una opción</option>
+                        <option value="">Seleccionar...</option>
                         {field.options.map((option) => (
                           <option key={option} value={option}>
                             {option}
@@ -575,16 +502,17 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                         id={field.id}
                         type={field.type === "number" ? "number" : "text"}
                         {...register(field.id as keyof FormData)}
-                        className={`w-full border-2 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
+                        className={`w-full border-2 bg-white text-foreground placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-ring transition-all ${
                           fieldError
                             ? "border-destructive focus:border-destructive"
                             : "border-input focus:border-ring"
                         }`}
                         style={{
+                          fontFamily: "Inter, sans-serif",
                           borderRadius: "var(--style-border-radius, 0.5rem)",
                           padding: "0.75rem",
-                          fontSize: "var(--style-body-size, 0.875rem)",
-                          fontWeight: "var(--style-body-weight, 400)",
+                          fontSize: "14px",
+                          fontWeight: 400,
                         }}
                         placeholder={field.label}
                       />
@@ -764,10 +692,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
         )}
 
         <div 
-          className="flex flex-col-reverse sm:flex-row pt-4"
-          style={{
-            gap: "var(--style-component-gap, 0.75rem)",
-          }}
+          className="flex flex-row pt-2 gap-2"
         >
           <Button
             type="button"
@@ -783,6 +708,12 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
             variant="default"
             size="md"
             disabled={!isValid || isLoading}
+            className="font-semibold text-white bg-[#FF6600] hover:bg-[#E55F00]"
+            style={{
+              fontFamily: "Inter, sans-serif",
+              fontSize: "16px",
+              fontWeight: 600,
+            }}
           >
             {isLoading ? (
               <>
