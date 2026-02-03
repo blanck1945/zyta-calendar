@@ -118,6 +118,19 @@
   position: relative;
 }
 
+/* Mobile/tablet: celdas y texto un poco más grandes para mejor toque y lectura */
+@media (max-width: 1023px) {
+  .react-calendar__tile {
+    font-size: 0.9375rem;
+  }
+  .react-calendar__navigation__label {
+    font-size: 1.125rem;
+  }
+  .react-calendar__month-view__weekdays {
+    font-size: 0.7rem;
+  }
+}
+
 .react-calendar__tile:enabled:hover {
   background: #fff7ed;
 }

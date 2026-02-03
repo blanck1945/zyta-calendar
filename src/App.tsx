@@ -8,9 +8,12 @@ import KairoStepSchedule, {
 } from "./components/steps/KairoStepSchedule";
 import type { CalendarValue } from "./components/KairoCalendar";
 
-// Lazy: cargar Form y Payment solo cuando el usuario llega a ese paso → menos JS inicial, app más rápida
+// Lazy: cargar Form, Payment y ReviewConfirmation solo cuando el usuario llega a ese paso
 const KairoStepForm = lazy(() => import("./components/steps/KairoStepForm"));
 const KairoStepPayment = lazy(() => import("./components/steps/KairoStepPayment"));
+const KairoStepReviewConfirmation = lazy(() =>
+  import("./components/steps/KairoStepReviewConfirmation").then((m) => ({ default: m.default }))
+);
 const ThemeSwitcher = lazy(() =>
   import("./components/ThemeSwitcher").then((m) => ({ default: m.ThemeSwitcher }))
 );
@@ -324,6 +327,7 @@ function App() {
   useEffect(() => {
     void import("./components/steps/KairoStepForm");
     void import("./components/steps/KairoStepPayment");
+    void import("./components/steps/KairoStepReviewConfirmation");
   }, []);
 
   // Aplicar el tema del calendario cuando se carga el schedule (solo la primera vez)
@@ -868,6 +872,45 @@ function App() {
     }
   }, [availableDurations, selectedDuration, setStoreSelectedDuration]);
 
+  // Al ingresar al calendario, si hay varios horarios, seleccionar el menor (más temprano)
+  useEffect(() => {
+    if (step !== 1 || !selectedDate || timeSlots.length === 0) return;
+    let slots = timeSlots.filter((s) => !s.disabled);
+    if (selectedDuration != null) {
+      slots = slots.filter((s) => s.duration === selectedDuration);
+    }
+    if (slots.length === 0) return;
+    const sorted = [...slots].sort((a, b) => {
+      const aMin = a.hour * 60 + (a.minute ?? 0);
+      const bMin = b.hour * 60 + (b.minute ?? 0);
+      return aMin - bMin;
+    });
+    const earliest = sorted[0];
+    const currentInList = sorted.some(
+      (s) =>
+        s.hour === selectedSlot?.hour &&
+        (s.minute ?? 0) === (selectedSlot?.minute ?? 0)
+    );
+    if (!currentInList) {
+      setStoreSelectedSlot({
+        hour: earliest.hour,
+        minute: earliest.minute ?? 0,
+      });
+      if (earliest.duration != null) {
+        setStoreSelectedDuration(earliest.duration);
+      }
+    }
+  }, [
+    step,
+    selectedDate,
+    timeSlots,
+    selectedDuration,
+    selectedSlot?.hour,
+    selectedSlot?.minute,
+    setStoreSelectedSlot,
+    setStoreSelectedDuration,
+  ]);
+
   const meetingStart = useMemo(() => {
     if (!selectedDate || !selectedSlot) return null;
     const start = new Date(selectedDate);
@@ -902,72 +945,55 @@ function App() {
     setStoreTimeSlotVariant(timeSlotVariant);
   }, [timeSlotVariant, setStoreTimeSlotVariant]);
 
-  // Loading de confirmación (declarado antes para usarlo en handleContinueToPayment)
+  const reviewBeforePayment = schedule?.bookingSettings?.confirmCaseBeforePayment === true;
+
+  // Loading de confirmación (para flujo con revisión: paso 3 Enviar Zyta)
   const [isConfirmingReservation, setIsConfirmingReservation] = useState(false);
 
+  const handleSubmitReviewConfirmation = async () => {
+    if (!meetingStart || !name || !email || !schedule?.calendarSlug) return;
+    setIsConfirmingReservation(true);
+    try {
+      const appointment = await createAppointmentMutation.mutateAsync({
+        calendarSlug: schedule.calendarSlug,
+        clientName: name,
+        clientEmail: email,
+        clientPhone: phone || undefined,
+        startTime: meetingStart.toISOString(),
+        paymentMethod: "cash",
+        notes: query || undefined,
+        duration: selectedDuration || undefined,
+      });
+
+      const formData = {
+        name,
+        email,
+        phone,
+        query,
+        customFields: customFields || {},
+      };
+      localStorage.setItem("bookingFormData", JSON.stringify(formData));
+
+      const params = new URLSearchParams();
+      params.set("calendarSlug", schedule.calendarSlug);
+      if (name) params.set("userName", encodeURIComponent(name));
+      if (appointment?.id) params.set("appointmentId", appointment.id);
+      const url = `/case-under-review?${params.toString()}`;
+
+      resetBooking();
+      window.location.href = url;
+    } catch (err) {
+      console.error("Error al crear la cita:", err);
+      setIsConfirmingReservation(false);
+    }
+  };
+
   const handleContinueToPayment = async () => {
-    // Si confirmCaseBeforePayment es true, crear la cita y redirigir a la página de caso en análisis
-    if (schedule?.bookingSettings?.confirmCaseBeforePayment) {
-      if (!meetingStart || !name || !email) {
-        console.error("Faltan datos requeridos para crear la cita");
-        return;
-      }
-
-      const calendarSlug = schedule?.calendarSlug;
-
-      if (!calendarSlug) {
-        console.error("No se encontró calendarSlug");
-        return;
-      }
-
-      setIsConfirmingReservation(true);
-      try {
-        // Crear la cita con método de pago "cash" por defecto (o el que corresponda)
-        // El backend puede manejar el estado cuando confirmCaseBeforePayment es true
-        const appointment = await createAppointmentMutation.mutateAsync({
-          calendarSlug,
-          clientName: name,
-          clientEmail: email,
-          clientPhone: phone || undefined,
-          startTime: meetingStart.toISOString(),
-          paymentMethod: "cash", // Método por defecto cuando se requiere confirmación antes del pago
-          notes: query || undefined,
-          duration: selectedDuration || undefined,
-        });
-
-        console.log(
-          "Cita creada exitosamente (pendiente de confirmación):",
-          appointment
-        );
-
-        // Guardar valores del formulario en localStorage antes de resetear
-        const formData = {
-          name,
-          email,
-          phone,
-          query,
-          customFields: customFields || {},
-        };
-        localStorage.setItem("bookingFormData", JSON.stringify(formData));
-
-        // Construir URL de redirección
-        const params = new URLSearchParams();
-        if (calendarSlug) params.set("calendarSlug", calendarSlug);
-        if (name) params.set("userName", encodeURIComponent(name));
-        const url = `/case-under-review${
-          params.toString() ? `?${params.toString()}` : ""
-        }`;
-
-        // Resetear el store antes de redirigir
-        resetBooking();
-        window.location.href = url;
-      } catch (err) {
-        console.error("Error al crear la cita:", err);
-        setIsConfirmingReservation(false);
-      }
+    if (reviewBeforePayment) {
+      setStep(3);
       return;
     }
-    // Si no, continuar al paso de pago
+    // Continuar al paso de pago
     // Auto-seleccionar método de pago si hay solo uno habilitado
     const enabledMethods = schedule?.payments?.enabled || [];
     if (enabledMethods.length === 1) {
@@ -1109,26 +1135,43 @@ function App() {
             : "Completá tus datos para continuar con el modo de pago.",
         };
       case 3:
-        return {
-          title: "Pago y confirmación",
-          subtitle: paymentMethod
-            ? "Confirmá tu reserva para finalizar"
-            : "Elegí cómo querés completar el pago para confirmar tu turno.",
-        };
+        return reviewBeforePayment
+          ? {
+              title: "Evaluación",
+              subtitle:
+                "Revisá los datos de tu consulta y enviá para que el profesional la evalúe.",
+            }
+          : {
+              title: "Pago y confirmación",
+              subtitle: paymentMethod
+                ? "Confirmá tu reserva para finalizar"
+                : "Elegí cómo querés completar el pago para confirmar tu turno.",
+            };
       default:
         return {
           title: step1Title,
           subtitle: step1Subtitle,
         };
     }
-  }, [step, name, paymentMethod, step1Title, step1Subtitle]);
+  }, [step, name, paymentMethod, step1Title, step1Subtitle, reviewBeforePayment]);
 
-  // Stepper config
-  const stepperItems = [
-    { num: 1, label: "Elegí turno" },
-    { num: 2, label: "Tus datos" },
-    { num: 3, label: "Pago" },
-  ];
+  // Stepper config: 4 pasos cuando hay revisión antes del pago (confirmCaseBeforePayment)
+  const stepperItems = useMemo(
+    () =>
+      reviewBeforePayment
+        ? [
+            { num: 1, label: "Elegí turno" },
+            { num: 2, label: "Tus datos" },
+            { num: 3, label: "Evaluación" },
+            { num: 4, label: "Pago" },
+          ]
+        : [
+            { num: 1, label: "Elegí turno" },
+            { num: 2, label: "Tus datos" },
+            { num: 3, label: "Pago" },
+          ],
+    [reviewBeforePayment]
+  );
 
   return (
     <div 
@@ -1182,17 +1225,17 @@ function App() {
         {/* Sheet blanco flotante */}
         <main className="px-4 md:px-8 pb-8">
           <div 
-            className="w-[90%] mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden"
+            className="w-[90%] mx-auto bg-white rounded-2xl shadow-2xl overflow-x-hidden overflow-y-auto max-h-[85vh]"
             style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}
           >
-            {/* Stepper + links (solo desktop) en la parte superior del contenedor */}
-            <div className="px-4 md:px-8 py-4 md:py-5 border-b border-gray-100 text-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 500 }}>
-              <div className="flex items-center justify-center md:justify-start gap-2 md:gap-6 overflow-x-auto min-h-[44px]">
+            {/* Stepper + links: en mobile/tablet columna centrada (stepper arriba, links abajo); en desktop fila con links a la derecha */}
+            <div className="px-3 sm:px-4 md:px-8 py-4 md:py-5 border-b border-gray-100 flex flex-col items-center gap-4 lg:flex-row lg:justify-between lg:items-center" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-3 lg:gap-x-6 lg:gap-y-0">
                 {stepperItems.map((item, idx) => (
                   <div key={item.num} className="flex items-center shrink-0">
                     <div className="flex items-center gap-2 md:gap-3 whitespace-nowrap">
                       <span 
-                        className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm font-medium shrink-0 ${
+                        className={`w-9 h-9 md:w-9 md:h-9 rounded-full flex items-center justify-center text-sm font-medium shrink-0 ${
                           step === item.num 
                             ? 'text-white' 
                             : step > item.num 
@@ -1201,12 +1244,11 @@ function App() {
                         }`}
                         style={step === item.num ? { backgroundColor: '#FF6600' } : undefined}
                       >
-                        {step > item.num ? <Check className="h-3.5 w-3.5 md:h-4 md:w-4" strokeWidth={2.5} /> : item.num}
+                        {step > item.num ? <Check className="h-4 w-4 md:h-5 md:w-5" strokeWidth={2.5} /> : item.num}
                       </span>
                       <span 
-                        className="font-medium"
+                        className="hidden min-[601px]:inline font-medium text-[14px]"
                         style={{
-                          fontSize: '14px',
                           fontWeight: 500,
                           color: step === item.num ? '#333333' : step > item.num ? 'var(--color-green-600, #16a34a)' : '#999999',
                         }}
@@ -1216,16 +1258,16 @@ function App() {
                     </div>
                     {idx < stepperItems.length - 1 && (
                       <div 
-                        className={`w-6 md:w-16 mx-1 md:mx-4 border-t ${step > item.num ? 'border-orange-300' : 'border-gray-200'} border-dashed shrink-0`}
-                        style={{ borderColor: step > item.num ? undefined : '#999999' }}
+                        className={`w-8 lg:w-16 mx-0 lg:mx-4 border-t ${step > item.num ? 'border-orange-300' : 'border-gray-200'} border-dashed shrink-0 self-center hidden lg:block`}
+                        style={{ borderColor: step > item.num ? undefined : '#999999', minWidth: 0 }}
                       />
                     )}
                   </div>
                 ))}
               </div>
-              {/* Links con iconos: solo en desktop, esquina superior derecha */}
+              {/* Links: en mobile/tablet debajo del stepper y centrados; en desktop a la derecha */}
               {schedule?.links && schedule.links.length > 0 && (
-                <div className="hidden md:flex shrink-0">
+                <div className="flex shrink-0 justify-center lg:justify-end">
                   <SocialLinks links={schedule.links} />
                 </div>
               )}
@@ -1267,7 +1309,6 @@ function App() {
                   selectedSlotMinute={selectedSlot?.minute ?? null}
                   onSelectSlotHour={(hour, minute = 0) => {
                     setStoreSelectedSlot({ hour, minute });
-                    // Si el slot tiene una duración específica, actualizarla
                     const selectedSlot = timeSlots.find(
                       (slot) => slot.hour === hour && (slot.minute ?? 0) === minute
                     );
@@ -1286,6 +1327,7 @@ function App() {
                   availableDurations={Array.isArray(schedule.slotMinutes) ? schedule.slotMinutes : [schedule.slotMinutes]}
                   selectedDuration={selectedDuration}
                   onSelectDuration={setStoreSelectedDuration}
+                  reviewBeforePayment={reviewBeforePayment}
                 />
               )}
             </>
@@ -1319,24 +1361,39 @@ function App() {
             </Suspense>
           )}
 
-          {step === 3 &&
-            !schedule?.bookingSettings?.confirmCaseBeforePayment && (
-              <Suspense fallback={<StepFallback />}>
-                <KairoStepPayment
-                  meetingStart={meetingStart}
-                  meetingEnd={meetingEnd}
-                  name={name}
-                  email={email}
-                  amount={schedule?.amount}
-                  currency={schedule?.currency}
-                  paymentMethod={paymentMethod}
-                  onChangePaymentMethod={setPaymentMethod}
-                  payments={schedule?.payments}
-                  onBack={handleBackToForm}
-                  onConfirm={handleConfirmReservation}
-                />
-              </Suspense>
-            )}
+          {step === 3 && reviewBeforePayment && (
+            <Suspense fallback={<StepFallback />}>
+              <KairoStepReviewConfirmation
+                meetingStart={meetingStart}
+                meetingEnd={meetingEnd}
+                timezone={schedule?.timezone ?? "America/Argentina/Buenos_Aires"}
+                amount={schedule?.amount}
+                currency={schedule?.currency}
+                onBack={handleBackToForm}
+                onSubmit={handleSubmitReviewConfirmation}
+                isLoading={
+                  isConfirmingReservation || createAppointmentMutation.isPending
+                }
+              />
+            </Suspense>
+          )}
+          {step === 3 && !reviewBeforePayment && (
+            <Suspense fallback={<StepFallback />}>
+              <KairoStepPayment
+                meetingStart={meetingStart}
+                meetingEnd={meetingEnd}
+                name={name}
+                email={email}
+                amount={schedule?.amount}
+                currency={schedule?.currency}
+                paymentMethod={paymentMethod}
+                onChangePaymentMethod={setPaymentMethod}
+                payments={schedule?.payments}
+                onBack={handleBackToForm}
+                onConfirm={handleConfirmReservation}
+              />
+            </Suspense>
+          )}
               </section>
             </div>
           </div>

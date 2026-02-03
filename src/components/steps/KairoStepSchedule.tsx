@@ -32,6 +32,7 @@ interface KairoStepScheduleProps {
   availableDurations?: number[];
   selectedDuration?: number | null;
   onSelectDuration?: (duration: number | null) => void;
+  reviewBeforePayment?: boolean;
 }
 
 const formatHour24h = (hour: number, minute: number = 0): string => {
@@ -54,6 +55,7 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
   availableDurations = [],
   selectedDuration,
   onSelectDuration,
+  reviewBeforePayment = false,
 }) => {
   const hasDateSelected = useMemo(
     () => formattedSelection !== "Ninguna fecha seleccionada",
@@ -90,12 +92,12 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
   }, [filteredTimeSlots]);
 
   return (
-    <div className="flex flex-col w-full max-w-4xl lg:max-w-none mx-auto gap-6">
+    <div className="flex flex-col w-full max-w-4xl lg:max-w-none mx-auto gap-4">
       {/* Contenedor Calendario + Horarios: altura dinámica (6 filas). El botón Continuar va debajo. */}
       <div className="flex-shrink-0 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-stretch w-full">
-        {/* Calendario: altura intrínseca (aspect-ratio 6 filas) — define el alto del row */}
+        {/* Calendario: en mobile/tablet más ancho para mejor lectura; en desktop igual */}
         <div className="w-full flex justify-center lg:justify-start self-start">
-          <div className="w-full max-w-[260px] lg:max-w-none lg:w-full">
+          <div className="w-full max-w-[min(100%,360px)] lg:max-w-none lg:w-full">
             <KairoCalendar
               value={value}
               onChange={onChangeDate}
@@ -153,7 +155,7 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
           ) : (
             <>
               <p className="text-sm text-gray-600 mb-3 shrink-0">Elegí un horario:</p>
-              <div className="grid grid-cols-2 gap-3 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-2 content-start">
+              <div className="grid grid-cols-2 gap-3 flex-1 min-h-0 max-h-[50vh] lg:max-h-none overflow-y-auto overflow-x-hidden pr-2 pb-4 content-start">
                 {formattedTimeSlots.map((slot, index) => {
                   const isSelected =
                     selectedSlotHour === slot.hour &&
@@ -188,8 +190,14 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
       </div>
       </div>
 
-      {/* Botón Continuar siempre debajo del contenedor Calendario + Horarios */}
-      <div className="flex-shrink-0 flex justify-start w-full mt-2">
+      {/* Microcopy evaluación (solo cuando reviewBeforePayment) */}
+      {reviewBeforePayment && (
+        <p className="text-sm text-muted-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
+          Este profesional evalúa cada consulta antes de confirmarla. El pago se realiza únicamente si la consulta es aceptada.
+        </p>
+      )}
+      {/* Botón principal debajo del contenedor Calendario + Horarios */}
+      <div className="flex-shrink-0 flex justify-start w-full">
         <Button
           type="button"
           variant="default"
@@ -203,7 +211,7 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
             fontWeight: 600,
           }}
         >
-          Continuar
+          {reviewBeforePayment ? "Enviar consulta" : "Continuar al pago"}
         </Button>
       </div>
     </div>

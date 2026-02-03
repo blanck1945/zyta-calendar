@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
-import { Clock, Info, User, Mail, Phone, MessageSquare } from "lucide-react";
+import { useSearchParams, useNavigate } from "react-router";
+import { Info, User, Mail, Phone, MessageSquare, CheckCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { useCalendarSchedule } from "../hooks/useCalendarSchedule";
@@ -18,6 +18,8 @@ export default function CaseUnderReview() {
   const calendarSlug = searchParams.get("calendarSlug");
   const userNameParam = searchParams.get("userName");
   const userName = userNameParam ? decodeURIComponent(userNameParam) : null;
+  const appointmentId = searchParams.get("appointmentId");
+  const navigate = useNavigate();
   const { schedule } = useCalendarSchedule();
   const [formData, setFormData] = useState<FormData | null>(null);
   
@@ -54,15 +56,18 @@ export default function CaseUnderReview() {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="rounded-full bg-primary/10 p-4">
-              <Clock className="h-12 w-12 text-primary" />
+              <CheckCircle className="h-12 w-12 text-primary" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-foreground">
-            Caso en Análisis
+            Zyta enviada
           </CardTitle>
           <CardDescription className="text-base mt-2">
-            Estamos revisando tu solicitud
+            Quedó pendiente de confirmación por el profesional.
           </CardDescription>
+          <p className="text-sm text-muted-foreground mt-2">
+            Te avisaremos por email cuando esté confirmada y puedas realizar el pago.
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="bg-accent rounded-lg p-4 border border-border">
@@ -81,11 +86,20 @@ export default function CaseUnderReview() {
               </div>
             )}
             <p className="text-sm text-muted-foreground mb-2">
-              El profesional/estudio está analizando tu caso y te avisará cuando termine.
+              El profesional revisará tu consulta y te avisará cuando la confirme.
             </p>
             <p className="text-sm text-muted-foreground mb-2">
-              Recibirás una notificación por email cuando tu solicitud sea revisada y confirmada.
+              Recibirás un email cuando esté lista para pagar.
             </p>
+            {/* Bloque Pago (informativo) */}
+            <div className="mt-4 pt-4 border-t border-border/50">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                Pago
+              </p>
+              <p className="text-sm text-muted-foreground">
+                El pago se habilita únicamente si el profesional confirma la consulta. El cobro se realiza a través de Mercado Pago.
+              </p>
+            </div>
             
             {/* Mostrar campos del formulario */}
             {schedule?.bookingForm && formData && (
@@ -184,8 +198,17 @@ export default function CaseUnderReview() {
             )}
           </div>
         </CardContent>
-        <CardFooter className="flex justify-center">
-          <Button onClick={handleGoBack} size="lg" className="w-full sm:w-auto">
+        <CardFooter className="flex flex-col sm:flex-row gap-3 justify-center">
+          {appointmentId && (
+            <Button
+              size="lg"
+              className="w-full sm:w-auto font-semibold"
+              onClick={() => navigate(`/zyta/${appointmentId}/estado`)}
+            >
+              Ver estado de mi Zyta
+            </Button>
+          )}
+          <Button variant={appointmentId ? "outline" : "default"} onClick={handleGoBack} size="lg" className="w-full sm:w-auto">
             Volver al inicio
           </Button>
         </CardFooter>

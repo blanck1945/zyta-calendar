@@ -11,6 +11,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentPending from "./pages/PaymentPending";
 import PaymentFailure from "./pages/PaymentFailure";
 import CaseUnderReview from "./pages/CaseUnderReview";
+import ZytaStatus from "./pages/ZytaStatus";
 
 // Configurar QueryClient
 const queryClient = new QueryClient({
@@ -39,6 +40,10 @@ const router = createBrowserRouter([
   {
     path: "/case-under-review",
     element: <CaseUnderReview />,
+  },
+  {
+    path: "/zyta/:id/estado",
+    element: <ZytaStatus />,
   },
   {
     path: "/:idCalendario",

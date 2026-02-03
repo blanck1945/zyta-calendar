@@ -718,10 +718,10 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {confirmCaseBeforePayment ? "Enviando solicitud..." : "Cargando..."}
+                {confirmCaseBeforePayment ? "Enviando consulta..." : "Cargando..."}
               </>
             ) : (
-              confirmCaseBeforePayment ? "Enviar solicitud" : "Siguiente"
+              confirmCaseBeforePayment ? "Enviar consulta" : "Continuar al pago"
             )}
           </Button>
         </div>
