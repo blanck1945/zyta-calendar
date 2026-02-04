@@ -70,18 +70,34 @@ export default function PaymentSuccess() {
     const labels: Record<string, string> = {
       mercadopago: "Mercado Pago",
       transfer: "Transferencia bancaria",
-      cash: "Efectivo",
-      coordinar: "A coordinar",
+      coordinar: "Coordinar",
     };
     return labels[method] || method;
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="max-w-lg w-full">
+    <div
+      className="min-h-screen relative flex items-center justify-center p-4"
+      style={{
+        backgroundColor: "#0a0a0a",
+        backgroundImage: "url(/muestras/banner.jpeg)",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+      }}
+    >
+      <div className="absolute inset-0 bg-black/60" />
+      <div className="relative z-10 w-full max-w-lg">
+        <Card
+          className="rounded-[18px] border border-gray-200 bg-white shadow-xl"
+          style={{
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
+            fontFamily: "Inter, sans-serif",
+          }}
+        >
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="rounded-full bg-green-100 p-4">
+            <div className="rounded-full bg-green-100/90 p-4">
               <CheckCircle className="h-12 w-12 text-green-600" />
             </div>
           </div>
@@ -144,8 +160,6 @@ export default function PaymentSuccess() {
                       "El profesional se pondrá en contacto contigo para coordinar los detalles del pago."}
                     {paymentMethod === "transfer" &&
                       "Recibirás un email con los datos bancarios para realizar la transferencia."}
-                    {paymentMethod === "cash" &&
-                      "Podrás abonar en efectivo al momento de la cita."}
                   </p>
                 </div>
               )}
@@ -158,7 +172,7 @@ export default function PaymentSuccess() {
               Recibirás un email de confirmación en breve.
             </p>
             <p className="text-sm text-muted-foreground">
-              Si tienes alguna consulta, no dudes en contactarnos.
+              Soporte Zyta: ayuda con turnos, acceso y pagos.
             </p>
           </div>
         </CardContent>
@@ -167,7 +181,8 @@ export default function PaymentSuccess() {
             Volver al inicio
           </Button>
         </CardFooter>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

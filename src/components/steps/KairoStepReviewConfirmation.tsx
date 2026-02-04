@@ -75,7 +75,7 @@ const KairoStepReviewConfirmation: React.FC<KairoStepReviewConfirmationProps> = 
       style={{ fontFamily: "Inter, sans-serif" }}
     >
       <div className="space-y-6">
-        {/* Box: Zyta en evaluación — naranja suave como en la app */}
+        {/* Box: Zyta en evaluación — solo en flujo con evaluación (paso 3 antes del pago) */}
         <div
           className="rounded-xl border border-orange-200 p-4"
           style={{ backgroundColor: "rgba(255, 106, 0, 0.08)" }}
@@ -83,19 +83,19 @@ const KairoStepReviewConfirmation: React.FC<KairoStepReviewConfirmationProps> = 
           <h3 className="font-semibold text-gray-900 text-lg mb-2">
             Zyta en evaluación
           </h3>
-          <p className="text-sm text-gray-600 mb-2">
+          <p className="text-sm text-gray-600 mb-1">
             El profesional revisará tu consulta antes de confirmarla.
           </p>
-          <p className="text-sm text-gray-600">
+          <p className="text-xs text-gray-500">
             Recibirás un email cuando esté lista para pagar.
           </p>
         </div>
 
-        {/* Resumen */}
+        {/* Resumen visible: fecha y horario, duración, zona horaria, valor */}
         {formattedResumen && (
           <div className="space-y-2 text-sm">
             <p className="font-medium text-gray-900">
-              {formattedResumen.dateTime}
+              Fecha y horario: {formattedResumen.dateTime}
             </p>
             <p className="text-gray-600">
               Duración: {formattedResumen.duration} min
@@ -142,11 +142,12 @@ const KairoStepReviewConfirmation: React.FC<KairoStepReviewConfirmationProps> = 
                   Enviando...
                 </>
               ) : (
-                "Enviar Zyta"
+                "Enviar consulta"
               )}
             </Button>
           </div>
-          <p className="text-sm text-gray-600" style={{ fontFamily: "Inter, sans-serif" }}>
+          {/* Microcopy debajo del CTA — paso 3 sin pago */}
+          <p className="text-sm text-gray-500 mt-1" style={{ fontFamily: "Inter, sans-serif" }}>
             El pago se realizará únicamente si el profesional confirma la consulta.
           </p>
         </form>

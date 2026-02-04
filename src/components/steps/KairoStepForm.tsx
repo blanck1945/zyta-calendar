@@ -59,10 +59,9 @@ function createValidationSchema(bookingForm?: BookingForm) {
         ? z.string().min(1, "Este campo es requerido").trim()
         : z.string().optional()
       : z.string().optional(),
+    // WhatsApp: obligatorio cuando el campo está habilitado (versión final paso 2)
     phone: phoneField.enabled
-      ? phoneField.required
-        ? z.string().min(1, "El teléfono es requerido").trim()
-        : z.string().optional()
+      ? z.string().min(1, "El teléfono es requerido").trim()
       : z.string().optional(),
   });
 
@@ -221,6 +220,8 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
   const emailField = bookingForm?.fields?.email ?? { enabled: true, required: true };
   const notesField = bookingForm?.fields?.notes ?? { enabled: true, required: false };
   const phoneField = bookingForm?.fields?.phone ?? { enabled: false, required: false };
+  // WhatsApp: cuando está habilitado es siempre obligatorio en paso 2 (versión final)
+  const phoneRequired = phoneField.enabled;
 
   return (
     <>
@@ -357,7 +358,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
               >
                 <Phone className="h-4 w-4" />
                 WhatsApp
-                {phoneField.required && (
+                {phoneRequired && (
                   <span className="text-destructive" aria-label="requerido">
                     *
                   </span>
@@ -432,7 +433,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
                 fontWeight: 400,
                 lineHeight: "1.5",
               }}
-              placeholder="Ej: Mi prepaga rechazó cobertura de medicación. Tengo orden médica y negativa por mail. Quiero evaluar amparo."
+              placeholder="Ej: Mi prepaga rechazo cobertura de medicacion. Tengo orden médica y negativa por mail. Quiero evaluar amparo."
             />
             {errors.query && (
               <div
@@ -725,6 +726,14 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
             )}
           </Button>
         </div>
+
+        {/* Microcopy legal único debajo del CTA (versión final paso 2) */}
+        <p
+          className="text-xs text-gray-500 mt-1"
+          style={{ fontFamily: "Inter, sans-serif" }}
+        >
+          Zyta es una plataforma de agenda y cobros. La consulta es brindada exclusivamente por el profesional.
+        </p>
       </form>
     </>
   );

@@ -33,6 +33,14 @@ interface KairoStepScheduleProps {
   selectedDuration?: number | null;
   onSelectDuration?: (duration: number | null) => void;
   reviewBeforePayment?: boolean;
+  /** Zona horaria del calendario (ej. America/Argentina/Buenos_Aires) para mostrar "Horarios en GMT‑3 (Argentina)" */
+  timezone?: string;
+  /** Modalidad de la consulta (ej. "videollamada (link al confirmar)") */
+  modalityLabel?: string;
+  /** Valor de la consulta (precio fijo del perfil). Siempre visible en calendario. */
+  amount?: number;
+  /** Moneda (ej. ARS) para formatear el valor */
+  currency?: string;
 }
 
 const formatHour24h = (hour: number, minute: number = 0): string => {
@@ -56,6 +64,10 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
   selectedDuration,
   onSelectDuration,
   reviewBeforePayment = false,
+  timezone,
+  modalityLabel = "videollamada (link al confirmar)",
+  amount,
+  currency = "ARS",
 }) => {
   const hasDateSelected = useMemo(
     () => formattedSelection !== "Ninguna fecha seleccionada",
@@ -91,8 +103,37 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
     }));
   }, [filteredTimeSlots]);
 
+  // Duración efectiva para el texto "Consulta de X min"
+  const effectiveDurationMinutes = selectedDuration ?? sortedDurations[0] ?? 30;
+
+  // Etiqueta de zona horaria (ej. GMT‑3 Argentina)
+  const timezoneDisplay = useMemo(() => {
+    if (!timezone) return "GMT‑3 (Argentina)";
+    if (timezone.includes("Argentina") || timezone.includes("Buenos_Aires")) return "GMT‑3 (Argentina)";
+    return timezone;
+  }, [timezone]);
+
+  // Valor de la consulta formateado (siempre visible en calendario, mismo precio evaluación ON/OFF)
+  const amountFormatted = useMemo(() => {
+    if (amount == null || !Number.isFinite(amount)) return null;
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: currency || "ARS",
+    }).format(amount);
+  }, [amount, currency]);
+
   return (
     <div className="flex flex-col w-full max-w-4xl lg:max-w-none mx-auto gap-4">
+      {/* UX siempre visible: zona horaria, duración, modalidad */}
+      <div
+        className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 shrink-0"
+        style={{ fontFamily: "Inter, sans-serif" }}
+      >
+        <span>Horarios en {timezoneDisplay}</span>
+        <span>Consulta de {effectiveDurationMinutes} min</span>
+        <span>Modalidad: {modalityLabel}</span>
+      </div>
+
       {/* Contenedor Calendario + Horarios: altura dinámica (6 filas). El botón Continuar va debajo. */}
       <div className="flex-shrink-0 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-stretch w-full">
         {/* Calendario: en mobile/tablet más ancho para mejor lectura; en desktop igual */}
@@ -114,6 +155,23 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
             className="lg:absolute lg:inset-0 lg:border-l lg:border-gray-100 lg:pl-8 pt-2 lg:pt-0 flex flex-col min-h-0 overflow-hidden"
             style={{ fontFamily: "Inter, sans-serif" }}
           >
+          {/* Valor de la consulta — visible sin scroll, mismo precio evaluación ON/OFF */}
+          <div className="shrink-0 mb-4 space-y-1">
+            {amountFormatted != null && (
+              <p className="text-sm font-semibold text-gray-900">
+                Valor de la consulta: {amountFormatted}
+              </p>
+            )}
+            <p className="text-sm text-gray-600">
+              Consulta de {effectiveDurationMinutes} min · Videollamada
+            </p>
+            {reviewBeforePayment && (
+              <p className="text-xs text-gray-500 mt-1">
+                El pago se habilita solo si el profesional confirma la consulta.
+              </p>
+            )}
+          </div>
+
           {/* Selector de duración */}
           {sortedDurations.length > 1 && onSelectDuration && (
             <div className="mb-4 shrink-0">
@@ -190,11 +248,16 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
       </div>
       </div>
 
-      {/* Microcopy evaluación (solo cuando reviewBeforePayment) */}
+      {/* Microcopy obligatorio (solo cuando evaluación ON): texto chico, gris, sin íconos */}
       {reviewBeforePayment && (
-        <p className="text-sm text-muted-foreground" style={{ fontFamily: "Inter, sans-serif" }}>
-          Este profesional evalúa cada consulta antes de confirmarla. El pago se realiza únicamente si la consulta es aceptada.
-        </p>
+        <div className="space-y-1 shrink-0">
+          <p className="text-sm text-gray-500" style={{ fontFamily: "Inter, sans-serif" }}>
+            Este profesional evalúa cada consulta antes de confirmarla. El pago se realiza únicamente si la consulta es aceptada.
+          </p>
+          <p className="text-xs text-gray-400" style={{ fontFamily: "Inter, sans-serif" }}>
+            La confirmación puede demorar según la revisión del profesional.
+          </p>
+        </div>
       )}
       {/* Botón principal debajo del contenedor Calendario + Horarios */}
       <div className="flex-shrink-0 flex justify-start w-full">

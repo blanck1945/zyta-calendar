@@ -4,8 +4,8 @@ import type { TimeSlotVariant } from "../components/steps/KairoStepSchedule";
 import type { PaymentMethod } from "../components/steps/KairoStepPayment";
 
 interface BookingState {
-  // Step 1: Calendario
-  step: 1 | 2 | 3;
+  // Step 1: Calendario (4 cuando hay evaluación previa: Elegí turno → Contanos tu consulta → Evaluación → Pago)
+  step: 1 | 2 | 3 | 4;
   selectedDate: CalendarValue | null;
   selectedSlot: { hour: number; minute: number } | null;
   selectedDuration: number | null; // Duración seleccionada en minutos
@@ -24,7 +24,7 @@ interface BookingState {
   paymentMethod: PaymentMethod | null;
 
   // Actions
-  setStep: (step: 1 | 2 | 3) => void;
+  setStep: (step: 1 | 2 | 3 | 4) => void;
   setSelectedDate: (date: CalendarValue | null) => void;
   setSelectedSlot: (slot: { hour: number; minute: number } | null) => void;
   setSelectedDuration: (duration: number | null) => void;

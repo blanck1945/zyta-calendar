@@ -247,21 +247,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
               </Card>
             )}
 
-            {/* Efectivo y Coordinar: solo seleccionan método; confirmar con el botón de abajo */}
-            {isMethodEnabled("cash") && payments?.cash && (
-              <Card
-                className={`flex flex-col p-5 border-2 flex-1 min-w-[280px] cursor-pointer transition-colors hover:border-orange-300 ${paymentMethod === "cash" ? "border-[#FF6600]" : "border-gray-100"}`}
-                style={{ borderRadius: "var(--style-border-radius, 0.75rem)" }}
-                onClick={() => onChangePaymentMethod("cash")}
-              >
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  A coordinar
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Pago a coordinar con el profesional
-                </p>
-              </Card>
-            )}
+            {/* Box "A coordinar" eliminado (versión final). Efectivo/Coordinar: solo si no es "A coordinar" */}
             {isMethodEnabled("coordinar") && payments?.coordinar && (
               <Card
                 className={`flex flex-col p-5 border-2 flex-1 min-w-[280px] cursor-pointer transition-colors hover:border-orange-300 ${paymentMethod === "coordinar" ? "border-[#FF6600]" : "border-gray-100"}`}

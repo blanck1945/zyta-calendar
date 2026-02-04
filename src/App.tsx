@@ -974,6 +974,19 @@ function App() {
       };
       localStorage.setItem("bookingFormData", JSON.stringify(formData));
 
+      const durationMinutes = meetingEnd && meetingStart
+        ? Math.round((meetingEnd.getTime() - meetingStart.getTime()) / 60000)
+        : selectedDuration ?? 30;
+      const bookingResumen = {
+        startTime: meetingStart.toISOString(),
+        endTime: meetingEnd?.toISOString(),
+        durationMinutes,
+        timezone: schedule.timezone ?? "America/Argentina/Buenos_Aires",
+        confirmationMaxHours: schedule.bookingSettings?.confirmationMaxHours ?? undefined,
+      };
+      localStorage.setItem("bookingResumen", JSON.stringify(bookingResumen));
+      localStorage.setItem("bookingCalendarSlug", schedule.calendarSlug);
+
       const params = new URLSearchParams();
       params.set("calendarSlug", schedule.calendarSlug);
       if (name) params.set("userName", encodeURIComponent(name));
@@ -1008,6 +1021,11 @@ function App() {
 
   const handleBackToForm = () => {
     setStep(2);
+  };
+
+  /** Desde paso 4 (Pago) volver al paso 3 (Evaluación) cuando hay evaluación previa */
+  const handleBackFromReview = () => {
+    setStep(3);
   };
 
   // Hook para crear preferencia de Mercado Pago
@@ -1104,12 +1122,13 @@ function App() {
     }
   };
 
-  // Frase personalizada para el step 1 (con default)
+  // Frase personalizada para el step 1 (con default). Vacío mientras carga para no mostrar "Agenda Kairo".
   // Prioridad: schedule.calendarTitle > VITE_STEP1_TITLE > "Agenda Kairo"
   const step1Title = useMemo(() => {
+    if (scheduleLoading) return "";
     if (schedule?.calendarTitle) return schedule.calendarTitle;
     return import.meta.env.VITE_STEP1_TITLE || "Agenda Kairo";
-  }, [schedule?.calendarTitle]);
+  }, [scheduleLoading, schedule?.calendarTitle]);
 
   const step1Subtitle = useMemo(() => {
     if (schedule?.calendarSubtitle) return schedule.calendarSubtitle;
@@ -1128,12 +1147,19 @@ function App() {
           subtitle: step1Subtitle,
         };
       case 2:
-        return {
-          title: "Completá tus datos",
-          subtitle: name
-            ? "Completá los datos restantes para continuar"
-            : "Completá tus datos para continuar con el modo de pago.",
-        };
+        return reviewBeforePayment
+          ? {
+              title: "Contanos tu consulta",
+              subtitle: name
+                ? "Completá los datos restantes para que el profesional pueda evaluar tu consulta."
+                : "Completá tus datos para que el profesional pueda evaluar tu consulta.",
+            }
+          : {
+              title: "Tus datos",
+              subtitle: name
+                ? "Completá los datos restantes para continuar"
+                : "Completá tus datos para continuar con el modo de pago.",
+            };
       case 3:
         return reviewBeforePayment
           ? {
@@ -1147,6 +1173,13 @@ function App() {
                 ? "Confirmá tu reserva para finalizar"
                 : "Elegí cómo querés completar el pago para confirmar tu turno.",
             };
+      case 4:
+        return {
+          title: "Pago y confirmación",
+          subtitle: paymentMethod
+            ? "Confirmá tu reserva para finalizar"
+            : "Elegí cómo querés completar el pago para confirmar tu turno.",
+        };
       default:
         return {
           title: step1Title,
@@ -1155,13 +1188,15 @@ function App() {
     }
   }, [step, name, paymentMethod, step1Title, step1Subtitle, reviewBeforePayment]);
 
-  // Stepper config: 4 pasos cuando hay revisión antes del pago (confirmCaseBeforePayment)
+  // Stepper: flujo dinámico según confirmCaseBeforePayment (evaluar antes de cobrar)
+  // Con evaluación: Elegí turno → Contanos tu consulta → Evaluación → Pago
+  // Sin evaluación: Elegí turno → Tus datos → Pago
   const stepperItems = useMemo(
     () =>
       reviewBeforePayment
         ? [
             { num: 1, label: "Elegí turno" },
-            { num: 2, label: "Tus datos" },
+            { num: 2, label: "Contanos tu consulta" },
             { num: 3, label: "Evaluación" },
             { num: 4, label: "Pago" },
           ]
@@ -1225,7 +1260,7 @@ function App() {
         {/* Sheet blanco flotante */}
         <main className="px-4 md:px-8 pb-8">
           <div 
-            className="w-[90%] mx-auto bg-white rounded-2xl shadow-2xl overflow-x-hidden overflow-y-auto max-h-[85vh]"
+            className="w-[90%] mx-auto bg-white rounded-2xl shadow-2xl overflow-x-hidden overflow-y-auto max-h-[85vh] scroll-smooth custom-scrollbar"
             style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}
           >
             {/* Stepper + links: en mobile/tablet columna centrada (stepper arriba, links abajo); en desktop fila con links a la derecha */}
@@ -1328,6 +1363,10 @@ function App() {
                   selectedDuration={selectedDuration}
                   onSelectDuration={setStoreSelectedDuration}
                   reviewBeforePayment={reviewBeforePayment}
+                  timezone={schedule.timezone}
+                  modalityLabel="videollamada (link al confirmar)"
+                  amount={schedule.amount}
+                  currency={schedule.currency}
                 />
               )}
             </>
@@ -1390,6 +1429,23 @@ function App() {
                 onChangePaymentMethod={setPaymentMethod}
                 payments={schedule?.payments}
                 onBack={handleBackToForm}
+                onConfirm={handleConfirmReservation}
+              />
+            </Suspense>
+          )}
+          {step === 4 && reviewBeforePayment && (
+            <Suspense fallback={<StepFallback />}>
+              <KairoStepPayment
+                meetingStart={meetingStart}
+                meetingEnd={meetingEnd}
+                name={name}
+                email={email}
+                amount={schedule?.amount}
+                currency={schedule?.currency}
+                paymentMethod={paymentMethod}
+                onChangePaymentMethod={setPaymentMethod}
+                payments={schedule?.payments}
+                onBack={handleBackFromReview}
                 onConfirm={handleConfirmReservation}
               />
             </Suspense>

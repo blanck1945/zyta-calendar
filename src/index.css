@@ -151,9 +151,10 @@ textarea {
   ) !important;
 }
 
-/* Scrollbar personalizado para el selector de horarios - usa variables del tema */
+/* Scrollbar personalizado para el sheet y selector de horarios - usa variables del tema */
 .custom-scrollbar {
   scrollbar-width: thin;
+  scroll-behavior: smooth;
   /* Para temas oscuros, usar colores más claros */
   scrollbar-color: var(--color-secondary-400) var(--color-secondary-50);
   /* Mejoras de compatibilidad para Safari Mac */
