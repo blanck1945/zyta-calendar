@@ -1010,14 +1010,16 @@ function App() {
       setStep(3);
       return;
     }
-    // Auto-seleccionar: MP primero, luego transfer, luego el primero disponible
+    // Auto-seleccionar: MP > GalioPay > transfer > primero disponible
     const enabledMethods = schedule?.payments?.enabled || [];
     if (enabledMethods.includes("mercadopago")) {
       setPaymentMethod("mercadopago");
+    } else if (enabledMethods.includes("galiopay")) {
+      setPaymentMethod("galiopay");
     } else if (enabledMethods.includes("transfer")) {
       setPaymentMethod("transfer");
     } else if (enabledMethods.length === 1) {
-      setPaymentMethod(enabledMethods[0] as "cash" | "transfer" | "mercadopago" | "coordinar");
+      setPaymentMethod(enabledMethods[0] as "cash" | "transfer" | "mercadopago" | "coordinar" | "galiopay");
     } else {
       setPaymentMethod(null);
     }

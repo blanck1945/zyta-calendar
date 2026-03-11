@@ -130,6 +130,7 @@ export interface CalendarPayments {
   cash?: { note: string };
   transfer?: { alias: string; cbu: string; note: string };
   mercadopago?: { link: string; note: string };
+  galiopay?: { note?: string };
   coordinar?: { note: string };
   noPaymentRequired?: boolean; // Si es true, deshabilita todos los métodos de pago
 }

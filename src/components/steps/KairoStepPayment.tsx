@@ -4,7 +4,7 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import type { CalendarPayments } from "../../hooks/useCalendarSchedule";
 
-export type PaymentMethod = "cash" | "transfer" | "mercadopago" | "coordinar";
+export type PaymentMethod = "cash" | "transfer" | "mercadopago" | "coordinar" | "galiopay";
 
 interface KairoStepPaymentProps {
   meetingStart: Date | null;
@@ -113,12 +113,16 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
 
   const hasAnyMethod =
     isMethodEnabled("mercadopago") ||
+    isMethodEnabled("galiopay") ||
     isMethodEnabled("transfer") ||
     isMethodEnabled("cash") ||
     isMethodEnabled("coordinar");
 
   // Texto y lógica del botón principal
-  const isRealPayment = paymentMethod === "mercadopago" || paymentMethod === "transfer";
+  const isRealPayment =
+    paymentMethod === "mercadopago" ||
+    paymentMethod === "galiopay" ||
+    paymentMethod === "transfer";
   const confirmButtonLabel = isLoading
     ? "Procesando..."
     : isRealPayment
@@ -154,6 +158,23 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
                 <p className="text-sm text-gray-600 flex-1">
                   {payments.mercadopago.note ||
                     "Pagás con tarjeta, saldo o transferencia. Confirmación automática en segundos."}
+                </p>
+              </Card>
+            )}
+
+            {/* GalioPay */}
+            {isMethodEnabled("galiopay") && (
+              <Card
+                className={`flex flex-col p-5 border-2 flex-1 min-w-[280px] cursor-pointer transition-colors hover:border-indigo-300 ${paymentMethod === "galiopay" ? "border-indigo-500" : "border-gray-100"}`}
+                style={{ borderRadius: "var(--style-border-radius, 0.75rem)" }}
+                onClick={() => onChangePaymentMethod("galiopay")}
+              >
+                <span className="inline-flex w-fit px-3 py-1 rounded-full text-xs font-semibold text-white bg-indigo-500 mb-3">
+                  RECOMENDADO
+                </span>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">GalioPay</h3>
+                <p className="text-sm text-gray-600 flex-1">
+                  Pagá online de forma segura. Confirmación automática al completar el pago.
                 </p>
               </Card>
             )}
