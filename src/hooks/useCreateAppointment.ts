@@ -6,7 +6,7 @@ export interface CreateAppointmentRequest {
   clientEmail: string;
   clientPhone?: string;
   startTime: string; // ISO 8601 format
-  paymentMethod: "mercadopago" | "transfer" | "cash" | "coordinar";
+  paymentMethod: "mercadopago" | "transfer" | "cash" | "coordinar" | "galiopay";
   notes?: string;
   duration?: number; // Duración en minutos (opcional)
 }
