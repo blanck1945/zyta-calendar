@@ -1009,14 +1009,15 @@ function App() {
       setStep(3);
       return;
     }
-    // Continuar al paso de pago
-    // Auto-seleccionar método de pago si hay solo uno habilitado
+    // Auto-seleccionar: MP primero, luego transfer, luego el primero disponible
     const enabledMethods = schedule?.payments?.enabled || [];
-    if (enabledMethods.length === 1) {
-      // Si hay un solo método, seleccionarlo automáticamente
+    if (enabledMethods.includes("mercadopago")) {
+      setPaymentMethod("mercadopago");
+    } else if (enabledMethods.includes("transfer")) {
+      setPaymentMethod("transfer");
+    } else if (enabledMethods.length === 1) {
       setPaymentMethod(enabledMethods[0] as "cash" | "transfer" | "mercadopago" | "coordinar");
-    } else if (enabledMethods.length > 1) {
-      // Si hay múltiples métodos, no seleccionar ninguno
+    } else {
       setPaymentMethod(null);
     }
     setStep(3);

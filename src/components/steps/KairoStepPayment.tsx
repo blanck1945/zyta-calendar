@@ -47,7 +47,6 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
   isLoading = false,
   error = null,
 }) => {
-  // Duración en minutos para el resumen
   const durationMinutes = useMemo(() => {
     if (!meetingStart || !meetingEnd) return null;
     return Math.round((meetingEnd.getTime() - meetingStart.getTime()) / 60000);
@@ -66,8 +65,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
       minute: "2-digit",
       hour12: false,
     }).replace(" ", "");
-    const tz = "GMT-3";
-    return `${dateStr} • ${timeStr} (${tz}) • ${durationMinutes} min`;
+    return `${dateStr} • ${timeStr} (GMT-3) • ${durationMinutes} min`;
   }, [meetingStart, meetingEnd, durationMinutes]);
 
   const enabledPaymentMethods = useMemo(() => {
@@ -113,13 +111,23 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleMercadoPagoConfirm = () => {
-    if (isLoading) return;
-    onChangePaymentMethod("mercadopago");
-    onConfirm("mercadopago");
-  };
+  const hasAnyMethod =
+    isMethodEnabled("mercadopago") ||
+    isMethodEnabled("transfer") ||
+    isMethodEnabled("cash") ||
+    isMethodEnabled("coordinar");
 
-  const hasAnyMethod = isMethodEnabled("mercadopago") || isMethodEnabled("transfer") || isMethodEnabled("cash") || isMethodEnabled("coordinar");
+  // Texto y lógica del botón principal
+  const isRealPayment = paymentMethod === "mercadopago" || paymentMethod === "transfer";
+  const confirmButtonLabel = isLoading
+    ? "Procesando..."
+    : isRealPayment
+    ? "Pagar"
+    : "Confirmar reserva";
+
+  const isTransferWithoutProof = paymentMethod === "transfer" && !transferProofFile;
+  const isConfirmDisabled =
+    !paymentMethod || isLoading || isTransferWithoutProof;
 
   return (
     <>
@@ -143,35 +151,10 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
                 <h3 className="text-lg font-bold text-gray-900 mb-2">
                   Mercado Pago
                 </h3>
-                <p className="text-sm text-gray-600 mb-4 flex-1">
+                <p className="text-sm text-gray-600 flex-1">
                   {payments.mercadopago.note ||
                     "Pagás con tarjeta, saldo o transferencia. Confirmación automática en segundos."}
                 </p>
-                <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="md"
-                    className="border-gray-200 text-gray-700 hover:bg-gray-50"
-                  >
-                    QR
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="md"
-                    onClick={handleMercadoPagoConfirm}
-                    disabled={isLoading}
-                    className="font-semibold text-white bg-[#FF6600] hover:bg-[#E55F00] disabled:opacity-60"
-                    style={{
-                      fontFamily: "Inter, sans-serif",
-                      fontSize: "16px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {isLoading ? "Procesando..." : "Pagar ahora"}
-                  </Button>
-                </div>
               </Card>
             )}
 
@@ -254,7 +237,6 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
               </Card>
             )}
 
-            {/* Box "A coordinar" eliminado (versión final). Efectivo/Coordinar: solo si no es "A coordinar" */}
             {isMethodEnabled("coordinar") && payments?.coordinar && (
               <Card
                 className={`flex flex-col p-5 border-2 flex-1 min-w-[280px] cursor-pointer transition-colors hover:border-orange-300 ${paymentMethod === "coordinar" ? "border-[#FF6600]" : "border-gray-100"}`}
@@ -294,11 +276,19 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
               {formattedResumenDate}
             </p>
             <p className="text-sm text-gray-600">
-              Monto: {amount != null
-                ? `${currency ?? '$'} ${amount.toLocaleString('es-AR')}`
-                : '$ — (lo define el abogado al confirmar)'}
+              Monto:{" "}
+              {amount != null
+                ? `${currency ?? "$"} ${amount.toLocaleString("es-AR")}`
+                : "$ — (lo define el profesional al confirmar)"}
             </p>
           </Card>
+        )}
+
+        {/* Hint si transfer sin comprobante */}
+        {isTransferWithoutProof && (
+          <p className="mb-3 text-sm text-gray-500">
+            Subí el comprobante de transferencia para poder continuar.
+          </p>
         )}
 
         {/* Error de pago */}
@@ -308,17 +298,29 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
           </div>
         )}
 
-        {/* Volver y Confirmar reserva */}
+        {/* Volver y botón principal */}
         <div className="flex flex-row pt-2 gap-2">
-          <Button type="button" variant="outline" size="md" onClick={onBack} disabled={isLoading}>
+          <Button
+            type="button"
+            variant="outline"
+            size="md"
+            onClick={onBack}
+            disabled={isLoading}
+          >
             Volver
           </Button>
           <Button
             type="button"
             variant="default"
             size="md"
-            disabled={!paymentMethod || isLoading}
-            onClick={() => paymentMethod && onConfirm(paymentMethod, paymentMethod === "transfer" ? transferProofFile : null)}
+            disabled={isConfirmDisabled}
+            onClick={() =>
+              paymentMethod &&
+              onConfirm(
+                paymentMethod,
+                paymentMethod === "transfer" ? transferProofFile : null
+              )
+            }
             className="font-semibold text-white bg-[#FF6600] hover:bg-[#E55F00] disabled:opacity-60"
             style={{
               fontFamily: "Inter, sans-serif",
@@ -326,7 +328,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
               fontWeight: 600,
             }}
           >
-            {isLoading ? "Procesando..." : "Confirmar reserva"}
+            {confirmButtonLabel}
           </Button>
         </div>
       </div>
