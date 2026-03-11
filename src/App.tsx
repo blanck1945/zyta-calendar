@@ -544,6 +544,8 @@ function App() {
 
             // Verificar si este slot está ocupado por un appointment existente
             const isSlotOccupied = schedule.appointments?.some((appointment) => {
+              // Solo bloquear slots por appointments activos (no cancelados ni completados)
+              if (appointment.status === "cancelled" || appointment.status === "completed") return false;
               // Los appointments vienen en UTC (ISO 8601), convertirlos a fecha local
               const appointmentStart = new Date(appointment.startTime);
               const appointmentEnd = new Date(appointment.endTime);
@@ -949,6 +951,7 @@ function App() {
 
   // Loading de confirmación (para flujo con revisión: paso 3 Enviar Zyta)
   const [isConfirmingReservation, setIsConfirmingReservation] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const handleSubmitReviewConfirmation = async () => {
     if (!meetingStart || !name || !email || !schedule?.calendarSlug) return;
@@ -1053,6 +1056,7 @@ function App() {
     }
 
     // Mostrar loading de inmediato (antes de cualquier async)
+    setPaymentError(null);
     setIsConfirmingReservation(true);
 
     try {
@@ -1092,6 +1096,8 @@ function App() {
           window.location.href = data.initPoint;
         } catch (err) {
           console.error("Error al crear preferencia MP", err);
+          const msg = err instanceof Error ? err.message : "Error al conectar con Mercado Pago";
+          setPaymentError(msg);
           setIsConfirmingReservation(false);
         }
       } else if (effectiveMethod === "transfer" || effectiveMethod === "cash" || effectiveMethod === "coordinar") {
@@ -1118,6 +1124,8 @@ function App() {
       }
     } catch (err) {
       console.error("Error al crear la cita:", err);
+      const msg = err instanceof Error ? err.message : "No se pudo crear la reserva. Intentá de nuevo.";
+      setPaymentError(msg);
       setIsConfirmingReservation(false);
     }
   };
@@ -1430,6 +1438,8 @@ function App() {
                 payments={schedule?.payments}
                 onBack={handleBackToForm}
                 onConfirm={handleConfirmReservation}
+                isLoading={isConfirming}
+                error={paymentError}
               />
             </Suspense>
           )}
@@ -1447,6 +1457,8 @@ function App() {
                 payments={schedule?.payments}
                 onBack={handleBackFromReview}
                 onConfirm={handleConfirmReservation}
+                isLoading={isConfirming}
+                error={paymentError}
               />
             </Suspense>
           )}

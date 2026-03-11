@@ -274,7 +274,7 @@ const KairoStepSchedule: React.FC<KairoStepScheduleProps> = ({
             fontWeight: 600,
           }}
         >
-          {reviewBeforePayment ? "Enviar consulta" : "Continuar al pago"}
+          {reviewBeforePayment ? "Enviar consulta" : "Continuar"}
         </Button>
       </div>
     </div>

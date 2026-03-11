@@ -23,6 +23,9 @@ interface KairoStepPaymentProps {
 
   onBack: () => void;
   onConfirm: (method?: PaymentMethod, transferProofFile?: File | null) => void;
+
+  isLoading?: boolean;
+  error?: string | null;
 }
 
 const formatCbuMasked = (cbu: string): string => {
@@ -41,6 +44,8 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
   payments,
   onBack,
   onConfirm,
+  isLoading = false,
+  error = null,
 }) => {
   // Duración en minutos para el resumen
   const durationMinutes = useMemo(() => {
@@ -109,6 +114,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
   };
 
   const handleMercadoPagoConfirm = () => {
+    if (isLoading) return;
     onChangePaymentMethod("mercadopago");
     onConfirm("mercadopago");
   };
@@ -155,14 +161,15 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
                     variant="default"
                     size="md"
                     onClick={handleMercadoPagoConfirm}
-                    className="font-semibold text-white bg-[#FF6600] hover:bg-[#E55F00]"
+                    disabled={isLoading}
+                    className="font-semibold text-white bg-[#FF6600] hover:bg-[#E55F00] disabled:opacity-60"
                     style={{
                       fontFamily: "Inter, sans-serif",
                       fontSize: "16px",
                       fontWeight: 600,
                     }}
                   >
-                    Pagar ahora
+                    {isLoading ? "Procesando..." : "Pagar ahora"}
                   </Button>
                 </div>
               </Card>
@@ -294,25 +301,32 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
           </Card>
         )}
 
+        {/* Error de pago */}
+        {error && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+            {error}
+          </div>
+        )}
+
         {/* Volver y Confirmar reserva */}
         <div className="flex flex-row pt-2 gap-2">
-          <Button type="button" variant="outline" size="md" onClick={onBack}>
+          <Button type="button" variant="outline" size="md" onClick={onBack} disabled={isLoading}>
             Volver
           </Button>
           <Button
             type="button"
             variant="default"
             size="md"
-            disabled={!paymentMethod}
+            disabled={!paymentMethod || isLoading}
             onClick={() => paymentMethod && onConfirm(paymentMethod, paymentMethod === "transfer" ? transferProofFile : null)}
-            className="font-semibold text-white bg-[#FF6600] hover:bg-[#E55F00]"
+            className="font-semibold text-white bg-[#FF6600] hover:bg-[#E55F00] disabled:opacity-60"
             style={{
               fontFamily: "Inter, sans-serif",
               fontSize: "16px",
               fontWeight: 600,
             }}
           >
-            Confirmar reserva
+            {isLoading ? "Procesando..." : "Confirmar reserva"}
           </Button>
         </div>
       </div>

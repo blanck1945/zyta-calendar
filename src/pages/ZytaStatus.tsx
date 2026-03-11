@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { Button } from "../components/ui/button";
 import { Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
@@ -6,16 +6,6 @@ import { Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
 /**
  * Página de estado de una Zyta (ruta /zyta/:id/estado).
  * "Volver al inicio" → siempre al calendario de esa Zyta (/{calendarSlug}), no a la landing.
- *
- * Comportamiento (alineado con BE):
- * - Con calendarSlug (URL o localStorage) → /{calendarSlug}
- * - Sin calendarSlug pero con appointmentId → GET /appointments/public/{id}/calendar-slug,
- *   luego /{calendarSlug} o landing; mientras tanto "Redirigiendo..." + spinner
- * - Sin slug ni id → landing
- *
- * Docs BE (zyta-be repo):
- * - Implementación FR: FR/ESTADO-ZYTA-VOLVER-AL-INICIO-IMPLEMENTACION-FRONT.md
- * - Contexto + endpoint (sección 6): FR/CAMBIOS-BE-LINK-ESTADO-ZYTA.md
  */
 type ZytaEstado = "en_evaluacion" | "confirmada" | "rechazada";
 
@@ -23,6 +13,12 @@ const LANDING_URL = import.meta.env.VITE_LANDING_URL || "https://zyta-landing.ve
 
 function getBackendUrl(): string {
   return (import.meta.env.VITE_BACKEND_URL || "").replace(/\/+$/, "");
+}
+
+function beStatusToEstado(status: string): ZytaEstado {
+  if (status === "confirmed" || status === "completed") return "confirmada";
+  if (status === "cancelled") return "rechazada";
+  return "en_evaluacion";
 }
 
 export default function ZytaStatus() {
@@ -34,8 +30,46 @@ export default function ZytaStatus() {
   const calendarSlug = calendarSlugFromUrl || calendarSlugFromStorage;
 
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [estado, setEstado] = useState<ZytaEstado>("en_evaluacion");
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
 
-  const estado: ZytaEstado = "en_evaluacion" as ZytaEstado;
+  // Fetchear el estado real del appointment
+  useEffect(() => {
+    if (!id) {
+      setIsLoadingStatus(false);
+      return;
+    }
+    const backendUrl = getBackendUrl();
+    if (!backendUrl) {
+      setIsLoadingStatus(false);
+      return;
+    }
+    let cancelled = false;
+
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch(`${backendUrl}/appointments/public/${encodeURIComponent(id)}/status`);
+        if (!cancelled && res.ok) {
+          const data = await res.json() as { id: string; status: string };
+          setEstado(beStatusToEstado(data.status));
+        }
+      } catch {
+        // ignore, keep default "en_evaluacion"
+      } finally {
+        if (!cancelled) setIsLoadingStatus(false);
+      }
+    };
+
+    void fetchStatus();
+
+    // Polling cada 30 segundos para detectar confirmación en tiempo real
+    const interval = setInterval(() => { void fetchStatus(); }, 30_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [id]);
 
   const goToCalendar = (slug: string) => {
     window.location.href = `${window.location.origin}/${slug}`;
@@ -93,123 +127,128 @@ export default function ZytaStatus() {
             fontFamily: "Inter, sans-serif",
           }}
         >
-          {estado === "en_evaluacion" && (
+          {isLoadingStatus ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            </div>
+          ) : (
             <>
-              <div className="flex justify-center mb-4">
-                <div className="rounded-full bg-amber-100/90 p-4">
-                  <Clock className="h-12 w-12 text-amber-600" />
-                </div>
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900 text-center">
-                Estado de tu Zyta
-              </h1>
-              <p className="text-base text-gray-600 text-center mt-2">
-                En evaluación
-              </p>
-              <p className="text-sm text-gray-500 text-center mt-2">
-                El profesional está revisando tu consulta. Te avisaremos por email cuando esté confirmada y puedas realizar el pago.
-              </p>
-              {id && (
-                <p className="text-xs text-gray-400 text-center mt-4">
-                  Referencia: {id}
-                </p>
+              {estado === "en_evaluacion" && (
+                <>
+                  <div className="flex justify-center mb-4">
+                    <div className="rounded-full bg-amber-100/90 p-4">
+                      <Clock className="h-12 w-12 text-amber-600" />
+                    </div>
+                  </div>
+                  <h1 className="text-2xl font-bold text-gray-900 text-center">
+                    Estado de tu Zyta
+                  </h1>
+                  <p className="text-base text-gray-600 text-center mt-2">
+                    En evaluación
+                  </p>
+                  <p className="text-sm text-gray-500 text-center mt-2">
+                    El profesional está revisando tu consulta. Te avisaremos por email cuando esté confirmada y puedas realizar el pago.
+                  </p>
+                  {id && (
+                    <p className="text-xs text-gray-400 text-center mt-4">
+                      Referencia: {id}
+                    </p>
+                  )}
+                  <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                      onClick={() => void handleGoBack()}
+                      disabled={isRedirecting}
+                    >
+                      {isRedirecting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Redirigiendo...
+                        </>
+                      ) : (
+                        "Volver al inicio"
+                      )}
+                    </Button>
+                  </div>
+                </>
               )}
-              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  style={{ fontFamily: "Inter, sans-serif" }}
-                  onClick={() => void handleGoBack()}
-                  disabled={isRedirecting}
-                >
-                  {isRedirecting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Redirigiendo...
-                    </>
-                  ) : (
-                    "Volver al inicio"
-                  )}
-                </Button>
-              </div>
-            </>
-          )}
 
-          {estado === "confirmada" && (
-            <>
-              <div className="flex justify-center mb-4">
-                <div className="rounded-full bg-green-100/90 p-4">
-                  <CheckCircle className="h-12 w-12 text-green-600" />
-                </div>
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900 text-center">
-                Confirmada – pagar ahora
-              </h1>
-              <p className="text-sm text-gray-600 text-center mt-2">
-                Tu consulta fue confirmada. Completá el pago para reservar tu turno.
-              </p>
-              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-                <Button
-                  size="lg"
-                  className="w-full sm:w-auto font-semibold text-white bg-[#FF6600] hover:bg-[#E55F00]"
-                  style={{ fontFamily: "Inter, sans-serif" }}
-                  onClick={() => {}}
-                >
-                  Pagar ahora
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  style={{ fontFamily: "Inter, sans-serif" }}
-                  onClick={() => void handleGoBack()}
-                  disabled={isRedirecting}
-                >
-                  {isRedirecting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Redirigiendo...
-                    </>
-                  ) : (
-                    "Volver al inicio"
+              {estado === "confirmada" && (
+                <>
+                  <div className="flex justify-center mb-4">
+                    <div className="rounded-full bg-green-100/90 p-4">
+                      <CheckCircle className="h-12 w-12 text-green-600" />
+                    </div>
+                  </div>
+                  <h1 className="text-2xl font-bold text-gray-900 text-center">
+                    Confirmada – pagar ahora
+                  </h1>
+                  <p className="text-sm text-gray-600 text-center mt-2">
+                    Tu consulta fue confirmada. Completá el pago para reservar tu turno.
+                  </p>
+                  {id && (
+                    <p className="text-xs text-gray-400 text-center mt-4">
+                      Referencia: {id}
+                    </p>
                   )}
-                </Button>
-              </div>
-            </>
-          )}
+                  <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                      onClick={() => void handleGoBack()}
+                      disabled={isRedirecting}
+                    >
+                      {isRedirecting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Redirigiendo...
+                        </>
+                      ) : (
+                        "Volver al inicio"
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
 
-          {estado === "rechazada" && (
-            <>
-              <div className="flex justify-center mb-4">
-                <div className="rounded-full bg-red-100/90 p-4">
-                  <XCircle className="h-12 w-12 text-red-600" />
-                </div>
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900 text-center">
-                Rechazada
-              </h1>
-              <p className="text-sm text-gray-600 text-center mt-2">
-                El profesional no pudo aceptar esta consulta. Podés volver al inicio o elegir otro horario.
-              </p>
-              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-                <Button
-                  size="lg"
-                  className="w-full sm:w-auto font-semibold text-white bg-[#FF6600] hover:bg-[#E55F00]"
-                  style={{ fontFamily: "Inter, sans-serif" }}
-                  onClick={() => void handleGoBack()}
-                  disabled={isRedirecting}
-                >
-                  {isRedirecting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Redirigiendo...
-                    </>
-                  ) : (
-                    "Volver al inicio"
-                  )}
-                </Button>
-              </div>
+              {estado === "rechazada" && (
+                <>
+                  <div className="flex justify-center mb-4">
+                    <div className="rounded-full bg-red-100/90 p-4">
+                      <XCircle className="h-12 w-12 text-red-600" />
+                    </div>
+                  </div>
+                  <h1 className="text-2xl font-bold text-gray-900 text-center">
+                    Rechazada
+                  </h1>
+                  <p className="text-sm text-gray-600 text-center mt-2">
+                    El profesional no pudo aceptar esta consulta. Podés volver al inicio o elegir otro horario.
+                  </p>
+                  <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button
+                      size="lg"
+                      className="w-full sm:w-auto font-semibold text-white bg-[#FF6600] hover:bg-[#E55F00]"
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                      onClick={() => void handleGoBack()}
+                      disabled={isRedirecting}
+                    >
+                      {isRedirecting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Redirigiendo...
+                        </>
+                      ) : (
+                        "Volver al inicio"
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
             </>
           )}
 
