@@ -1078,9 +1078,14 @@ function App() {
       if (effectiveMethod === "mercadopago") {
         // Construir las URLs de redirección basadas en el origen actual
         const baseUrl = window.location.origin;
-        const successUrl = `${baseUrl}/payment/success`;
-        const failureUrl = `${baseUrl}/payment/failure`;
-        const pendingUrl = `${baseUrl}/payment/pending`;
+        const successParams = new URLSearchParams({
+          calendarSlug,
+          method: "mercadopago",
+          name: encodeURIComponent(name),
+        });
+        const successUrl = `${baseUrl}/payment/success?${successParams.toString()}`;
+        const failureUrl = `${baseUrl}/payment/failure?calendarSlug=${calendarSlug}`;
+        const pendingUrl = `${baseUrl}/payment/pending?calendarSlug=${calendarSlug}`;
 
         try {
           const data = await createPreferenceMutation.mutateAsync({
@@ -1092,7 +1097,20 @@ function App() {
             pendingUrl,
           });
 
-          // Redirigir a Mercado Pago (reset después de preparar la redirección)
+          // Guardar datos de reserva en localStorage antes de salir a MP
+          const bookingData = {
+            appointmentId: appointment.id,
+            calendarSlug,
+            clientName: name,
+            clientEmail: email,
+            startTime: meetingStart.toISOString(),
+            endTime: meetingEnd?.toISOString(),
+            paymentMethod: "mercadopago",
+            confirmedAt: new Date().toISOString(),
+          };
+          localStorage.setItem("lastBooking", JSON.stringify(bookingData));
+
+          // Redirigir a Mercado Pago
           resetBooking();
           window.location.href = data.initPoint;
         } catch (err) {
