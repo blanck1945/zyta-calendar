@@ -3,22 +3,43 @@ import { useSearchParams } from "react-router";
 import { XCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../components/ui/card";
 import { Button } from "../components/ui/button";
+import { useCancelAppointment } from "../hooks/useCancelAppointment";
 
 export default function PaymentFailure() {
   const [searchParams] = useSearchParams();
   const calendarSlug = searchParams.get("calendarSlug");
   const paymentId = searchParams.get("payment_id");
   const status = searchParams.get("status");
+  const appointmentId = searchParams.get("appointmentId");
+
+  const cancelAppointment = useCancelAppointment();
 
   useEffect(() => {
-    // Opcional: Aquí podrías registrar el error o enviar información al backend
     if (paymentId || status) {
       console.log("Payment failure details:", { paymentId, status });
     }
-  }, [paymentId, status]);
+    // Cancelar el appointment para liberar el horario
+    if (appointmentId) {
+      cancelAppointment.mutate(appointmentId);
+    } else {
+      // Fallback: intentar cancelar desde localStorage si no viene en la URL
+      try {
+        const lastBooking = localStorage.getItem("lastBooking");
+        if (lastBooking) {
+          const booking = JSON.parse(lastBooking);
+          if (booking?.appointmentId) {
+            cancelAppointment.mutate(booking.appointmentId);
+          }
+        }
+      } catch {
+        // ignorar
+      }
+    }
+  // Solo ejecutar al montar
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleRetry = () => {
-    // Redirigir al calendario o a la landing
     if (calendarSlug) {
       window.location.href = `/${calendarSlug}`;
     } else {
@@ -62,10 +83,10 @@ export default function PaymentFailure() {
           <Button onClick={handleRetry} size="lg" className="w-full sm:w-auto">
             Intentar nuevamente
           </Button>
-          <Button 
-            onClick={handleGoHome} 
-            size="lg" 
-            variant="outline" 
+          <Button
+            onClick={handleGoHome}
+            size="lg"
+            variant="outline"
             className="w-full sm:w-auto"
           >
             Volver al inicio
@@ -75,4 +96,3 @@ export default function PaymentFailure() {
     </div>
   );
 }
-

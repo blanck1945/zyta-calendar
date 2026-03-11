@@ -27,6 +27,7 @@ import {
 import { useCreateMercadoPagoPreference } from "./hooks/useCreateMercadoPagoPreference";
 import { useCreateGalioPayLink } from "./hooks/useCreateGalioPayLink";
 import { useCreateAppointment } from "./hooks/useCreateAppointment";
+import { useCancelAppointment } from "./hooks/useCancelAppointment";
 import SocialLinks from "./components/SocialLinks/SocialLinks";
 import type { ThemeName, ExtraThemeName } from "./themes";
 import {
@@ -1041,6 +1042,26 @@ function App() {
   const createGalioPayLinkMutation = useCreateGalioPayLink();
   // Hook para crear appointment
   const createAppointmentMutation = useCreateAppointment();
+  // Hook para cancelar appointment (liberar slot si pago fue abandonado)
+  const cancelAppointmentMutation = useCancelAppointment();
+
+  // Al montar el calendario: si quedó un lastBooking sin pagar (pago abandonado), cancelarlo
+  useEffect(() => {
+    try {
+      const lastBooking = localStorage.getItem("lastBooking");
+      if (lastBooking) {
+        const booking = JSON.parse(lastBooking);
+        if (booking?.appointmentId) {
+          cancelAppointmentMutation.mutate(booking.appointmentId);
+        }
+        localStorage.removeItem("lastBooking");
+      }
+    } catch {
+      localStorage.removeItem("lastBooking");
+    }
+  // Solo ejecutar al montar
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isConfirming =
     isConfirmingReservation ||
@@ -1090,7 +1111,7 @@ function App() {
           name: encodeURIComponent(name),
         });
         const successUrl = `${baseUrl}/payment/success?${successParams.toString()}`;
-        const failureUrl = `${baseUrl}/payment/failure?calendarSlug=${calendarSlug}`;
+        const failureUrl = `${baseUrl}/payment/failure?calendarSlug=${calendarSlug}&appointmentId=${appointment.id}`;
         const pendingUrl = `${baseUrl}/payment/pending?calendarSlug=${calendarSlug}`;
 
         try {
@@ -1129,7 +1150,7 @@ function App() {
         const baseUrl = window.location.origin;
         const successParams = new URLSearchParams({ calendarSlug, method: "galiopay", name: encodeURIComponent(name) });
         const successUrl = `${baseUrl}/payment/success?${successParams.toString()}`;
-        const failureUrl = `${baseUrl}/payment/failure?calendarSlug=${calendarSlug}`;
+        const failureUrl = `${baseUrl}/payment/failure?calendarSlug=${calendarSlug}&appointmentId=${appointment.id}`;
 
         try {
           const data = await createGalioPayLinkMutation.mutateAsync({
