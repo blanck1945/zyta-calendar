@@ -136,7 +136,7 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
   return (
     <>
       <div
-        className="max-w-4xl mx-auto"
+        className="w-full"
         style={{ fontFamily: "Inter, sans-serif" }}
       >
         {/* Métodos de pago en fila (flex) */}
