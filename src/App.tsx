@@ -25,6 +25,7 @@ import {
   type TimeRange,
 } from "./hooks/useCalendarSchedule";
 import { useCreateMercadoPagoPreference } from "./hooks/useCreateMercadoPagoPreference";
+import { useCreateGalioPayLink } from "./hooks/useCreateGalioPayLink";
 import { useCreateAppointment } from "./hooks/useCreateAppointment";
 import SocialLinks from "./components/SocialLinks/SocialLinks";
 import type { ThemeName, ExtraThemeName } from "./themes";
@@ -1034,13 +1035,16 @@ function App() {
 
   // Hook para crear preferencia de Mercado Pago
   const createPreferenceMutation = useCreateMercadoPagoPreference();
+  // Hook para crear link de GalioPay
+  const createGalioPayLinkMutation = useCreateGalioPayLink();
   // Hook para crear appointment
   const createAppointmentMutation = useCreateAppointment();
 
   const isConfirming =
     isConfirmingReservation ||
     createAppointmentMutation.isPending ||
-    createPreferenceMutation.isPending;
+    createPreferenceMutation.isPending ||
+    createGalioPayLinkMutation.isPending;
 
   const handleConfirmReservation = async (method?: typeof paymentMethod, transferProofFile?: File | null) => {
     const effectiveMethod = method ?? paymentMethod;
@@ -1116,6 +1120,42 @@ function App() {
         } catch (err) {
           console.error("Error al crear preferencia MP", err);
           const msg = err instanceof Error ? err.message : "Error al conectar con Mercado Pago";
+          setPaymentError(msg);
+          setIsConfirmingReservation(false);
+        }
+      } else if (effectiveMethod === "galiopay") {
+        const baseUrl = window.location.origin;
+        const successParams = new URLSearchParams({ calendarSlug, method: "galiopay", name: encodeURIComponent(name) });
+        const successUrl = `${baseUrl}/payment/success?${successParams.toString()}`;
+        const failureUrl = `${baseUrl}/payment/failure?calendarSlug=${calendarSlug}`;
+
+        try {
+          const data = await createGalioPayLinkMutation.mutateAsync({
+            calendarSlug,
+            amount: schedule?.amount ?? 0,
+            currency: schedule?.currency ?? "ARS",
+            successUrl,
+            failureUrl,
+            referenceId: appointment.id,
+          });
+
+          const bookingData = {
+            appointmentId: appointment.id,
+            calendarSlug,
+            clientName: name,
+            clientEmail: email,
+            startTime: meetingStart.toISOString(),
+            endTime: meetingEnd?.toISOString(),
+            paymentMethod: "galiopay",
+            confirmedAt: new Date().toISOString(),
+          };
+          localStorage.setItem("lastBooking", JSON.stringify(bookingData));
+
+          resetBooking();
+          window.location.href = data.checkoutUrl;
+        } catch (err) {
+          console.error("Error al crear link GalioPay", err);
+          const msg = err instanceof Error ? err.message : "Error al conectar con GalioPay";
           setPaymentError(msg);
           setIsConfirmingReservation(false);
         }
