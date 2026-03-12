@@ -1,5 +1,6 @@
 // src/components/steps/KairoStepPayment.tsx
 import { useMemo, useRef, useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import type { CalendarPayments } from "../../hooks/useCalendarSchedule";
@@ -87,6 +88,13 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
       if (transferProofPreviewUrl) URL.revokeObjectURL(transferProofPreviewUrl);
     };
   }, [transferProofPreviewUrl]);
+
+  // Mostrar error de pago como toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   const handleSubirComprobanteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -312,15 +320,8 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
           </p>
         )}
 
-        {/* Error de pago */}
-        {error && (
-          <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-            {error}
-          </div>
-        )}
-
         {/* Volver y botón principal */}
-        <div className="flex flex-row pt-2 gap-2">
+        <div className="flex flex-row justify-center pt-2 gap-2">
           <Button
             type="button"
             variant="outline"

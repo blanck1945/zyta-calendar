@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { Toaster } from "sonner";
 import "./index.css";
 import App from "./App.tsx";
 import { createBrowserRouter } from "react-router";
@@ -60,6 +61,7 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <RouterProvider router={router} />
+        <Toaster position="top-center" richColors />
       </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>
