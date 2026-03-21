@@ -1,11 +1,13 @@
 // src/components/steps/KairoStepPayment.tsx
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import type { CalendarPayments } from "../../hooks/useCalendarSchedule";
+import PaymentMethodPicker from "../payment/PaymentMethodPicker";
+import type { PaymentMethod } from "../payment/paymentMethodUtils";
 
-export type PaymentMethod = "cash" | "transfer" | "mercadopago" | "coordinar" | "galiopay";
+export type { PaymentMethod } from "../payment/paymentMethodUtils";
 
 interface KairoStepPaymentProps {
   meetingStart: Date | null;
@@ -29,12 +31,6 @@ interface KairoStepPaymentProps {
   error?: string | null;
 }
 
-const formatCbuMasked = (cbu: string): string => {
-  const digits = cbu.replace(/\D/g, "");
-  if (digits.length < 4) return cbu;
-  return `**** **** **** ${digits.slice(-4)}`;
-};
-
 const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
   meetingStart,
   meetingEnd,
@@ -48,6 +44,13 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
   isLoading = false,
   error = null,
 }) => {
+  const [transferProofFile, setTransferProofFile] = useState<File | null>(null);
+
+  const handlePaymentMethodChange = (m: PaymentMethod) => {
+    if (m !== "transfer") setTransferProofFile(null);
+    onChangePaymentMethod(m);
+  };
+
   const durationMinutes = useMemo(() => {
     if (!meetingStart || !meetingEnd) return null;
     return Math.round((meetingEnd.getTime() - meetingStart.getTime()) / 60000);
@@ -61,33 +64,15 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
       month: "short",
       year: "numeric",
     });
-    const timeStr = meetingStart.toLocaleTimeString("es-AR", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).replace(" ", "");
+    const timeStr = meetingStart
+      .toLocaleTimeString("es-AR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      })
+      .replace(" ", "");
     return `${dateStr} • ${timeStr} (GMT-3) • ${durationMinutes} min`;
   }, [meetingStart, meetingEnd, durationMinutes]);
-
-  const enabledPaymentMethods = useMemo(() => {
-    if (payments?.noPaymentRequired) return [];
-    if (!payments?.enabled || payments.enabled.length === 0) return [];
-    return payments.enabled;
-  }, [payments]);
-
-  const isMethodEnabled = (method: string): boolean =>
-    enabledPaymentMethods.includes(method);
-
-  // Subida de comprobante (transferencia)
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [transferProofFile, setTransferProofFile] = useState<File | null>(null);
-  const [transferProofPreviewUrl, setTransferProofPreviewUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (transferProofPreviewUrl) URL.revokeObjectURL(transferProofPreviewUrl);
-    };
-  }, [transferProofPreviewUrl]);
 
   // Mostrar error de pago como toast
   useEffect(() => {
@@ -96,37 +81,6 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
     }
   }, [error]);
 
-  const handleSubirComprobanteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    fileInputRef.current?.click();
-  };
-
-  const handleTransferProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (transferProofPreviewUrl) URL.revokeObjectURL(transferProofPreviewUrl);
-      setTransferProofFile(file);
-      setTransferProofPreviewUrl(URL.createObjectURL(file));
-    }
-    e.target.value = "";
-  };
-
-  const handleRemoveTransferProof = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (transferProofPreviewUrl) URL.revokeObjectURL(transferProofPreviewUrl);
-    setTransferProofFile(null);
-    setTransferProofPreviewUrl(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const hasAnyMethod =
-    isMethodEnabled("mercadopago") ||
-    isMethodEnabled("galiopay") ||
-    isMethodEnabled("transfer") ||
-    isMethodEnabled("cash") ||
-    isMethodEnabled("coordinar");
-
-  // Texto y lógica del botón principal
   const isRealPayment =
     paymentMethod === "mercadopago" ||
     paymentMethod === "galiopay" ||
@@ -134,8 +88,8 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
   const confirmButtonLabel = isLoading
     ? "Procesando..."
     : isRealPayment
-    ? "Pagar"
-    : "Confirmar reserva";
+      ? "Pagar"
+      : "Confirmar reserva";
 
   const isTransferWithoutProof = paymentMethod === "transfer" && !transferProofFile;
   const isConfirmDisabled =
@@ -147,152 +101,13 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
         className="w-full"
         style={{ fontFamily: "Inter, sans-serif" }}
       >
-        {/* Métodos de pago en fila (flex) */}
-        {hasAnyMethod && (
-          <div className="flex flex-wrap gap-6 mb-6">
-            {/* Mercado Pago */}
-            {isMethodEnabled("mercadopago") && payments?.mercadopago && (
-              <Card
-                className={`flex flex-col p-5 border-2 flex-1 min-w-[280px] cursor-pointer transition-colors hover:border-orange-300 ${paymentMethod === "mercadopago" ? "border-[#FF6600]" : "border-gray-100"}`}
-                style={{ borderRadius: "var(--style-border-radius, 0.75rem)" }}
-                onClick={() => onChangePaymentMethod("mercadopago")}
-              >
-                <span className="inline-flex w-fit px-3 py-1 rounded-full text-xs font-semibold text-white bg-[#FF6600] mb-3">
-                  RECOMENDADO
-                </span>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  Mercado Pago
-                </h3>
-                <p className="text-sm text-gray-600 flex-1">
-                  {payments.mercadopago.note ||
-                    "Pagás con tarjeta, saldo o transferencia. Confirmación automática en segundos."}
-                </p>
-              </Card>
-            )}
-
-            {/* GalioPay */}
-            {isMethodEnabled("galiopay") && (
-              <Card
-                className={`flex flex-col p-5 border-2 flex-1 min-w-[280px] cursor-pointer transition-colors hover:border-indigo-300 ${paymentMethod === "galiopay" ? "border-indigo-500" : "border-gray-100"}`}
-                style={{ borderRadius: "var(--style-border-radius, 0.75rem)" }}
-                onClick={() => onChangePaymentMethod("galiopay")}
-              >
-                <span className="inline-flex w-fit px-3 py-1 rounded-full text-xs font-semibold text-white bg-indigo-500 mb-3">
-                  RECOMENDADO
-                </span>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">GalioPay</h3>
-                <p className="text-sm text-gray-600 flex-1">
-                  Pagá online de forma segura. Confirmación automática al completar el pago.
-                </p>
-              </Card>
-            )}
-
-            {/* Transferencia */}
-            {isMethodEnabled("transfer") && payments?.transfer && (
-              <Card
-                className={`flex flex-col p-5 border-2 flex-1 min-w-[280px] cursor-pointer transition-colors hover:border-orange-300 ${paymentMethod === "transfer" ? "border-[#FF6600]" : "border-gray-100"}`}
-                style={{ borderRadius: "var(--style-border-radius, 0.75rem)" }}
-                onClick={() => onChangePaymentMethod("transfer")}
-              >
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  Transferencia
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  {payments.transfer.note ||
-                    "Transferí a la cuenta indicada y subí el comprobante para confirmar el turno."}
-                </p>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 space-y-2">
-                  <div>
-                    <span className="text-gray-500 text-sm">Alias: </span>
-                    <span className="text-gray-900 font-medium">
-                      {payments.transfer.alias}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 text-sm">CBU: </span>
-                    <span className="text-gray-900 font-mono text-sm">
-                      {formatCbuMasked(payments.transfer.cbu)}
-                    </span>
-                  </div>
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleTransferProofChange}
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="md"
-                  onClick={handleSubirComprobanteClick}
-                  className="w-full border-gray-200 text-gray-700 hover:bg-gray-50 font-medium"
-                >
-                  Subir comprobante
-                </Button>
-                {transferProofFile && (
-                  <div
-                    className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center gap-3"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {transferProofPreviewUrl && (
-                      <img
-                        src={transferProofPreviewUrl}
-                        alt="Comprobante"
-                        className="w-14 h-14 object-cover rounded border border-gray-200"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {transferProofFile.name}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {(transferProofFile.size / 1024).toFixed(1)} KB
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRemoveTransferProof}
-                      className="shrink-0 border-gray-200 text-gray-600 hover:bg-gray-100"
-                    >
-                      Eliminar
-                    </Button>
-                  </div>
-                )}
-              </Card>
-            )}
-
-            {isMethodEnabled("coordinar") && payments?.coordinar && (
-              <Card
-                className={`flex flex-col p-5 border-2 flex-1 min-w-[280px] cursor-pointer transition-colors hover:border-orange-300 ${paymentMethod === "coordinar" ? "border-[#FF6600]" : "border-gray-100"}`}
-                style={{ borderRadius: "var(--style-border-radius, 0.75rem)" }}
-                onClick={() => onChangePaymentMethod("coordinar")}
-              >
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
-                  Coordinar
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  {payments.coordinar.note}
-                </p>
-              </Card>
-            )}
-          </div>
-        )}
-
-        {payments?.noPaymentRequired && (
-          <div className="mb-6 text-center py-6 text-gray-500">
-            No se requiere método de pago para esta reserva.
-          </div>
-        )}
-        {!hasAnyMethod && !payments?.noPaymentRequired && (
-          <div className="mb-6 text-center py-6 text-gray-500">
-            No hay métodos de pago configurados.
-          </div>
-        )}
+        <PaymentMethodPicker
+          payments={payments}
+          paymentMethod={paymentMethod}
+          onPaymentMethodChange={handlePaymentMethodChange}
+          transferProofFile={transferProofFile}
+          onTransferProofChange={setTransferProofFile}
+        />
 
         {/* Resumen */}
         {meetingStart && meetingEnd && (
@@ -313,14 +128,12 @@ const KairoStepPayment: React.FC<KairoStepPaymentProps> = ({
           </Card>
         )}
 
-        {/* Hint si transfer sin comprobante */}
         {isTransferWithoutProof && (
           <p className="mb-3 text-sm text-gray-500">
             Subí el comprobante de transferencia para poder continuar.
           </p>
         )}
 
-        {/* Volver y botón principal */}
         <div className="flex flex-row justify-center pt-2 gap-2">
           <Button
             type="button"

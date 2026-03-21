@@ -1,13 +1,24 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
 import { Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useCreateMercadoPagoPreference } from "../hooks/useCreateMercadoPagoPreference";
+import { useCreateGalioPayLink } from "../hooks/useCreateGalioPayLink";
+import type { CalendarPayments } from "../hooks/useCalendarSchedule";
+import PaymentMethodPicker from "../components/payment/PaymentMethodPicker";
+import {
+  pickDefaultPaymentMethod,
+  hasSelectablePaymentMethods,
+  type PaymentMethod,
+} from "../components/payment/paymentMethodUtils";
 
 /**
  * Página de estado de una Zyta (ruta /zyta/:id/estado).
  * "Volver al inicio" → siempre al calendario de esa Zyta (/{calendarSlug}), no a la landing.
  */
-type ZytaEstado = "en_evaluacion" | "confirmada" | "rechazada";
+type ZytaEstado = "en_evaluacion" | "confirmada_pendiente_pago" | "confirmada" | "rechazada";
 
 const LANDING_URL = import.meta.env.VITE_LANDING_URL || "https://zyta-landing.vercel.app/";
 
@@ -16,9 +27,27 @@ function getBackendUrl(): string {
 }
 
 function beStatusToEstado(status: string): ZytaEstado {
+  if (status === "confirmed_pending_payment") return "confirmada_pendiente_pago";
   if (status === "confirmed" || status === "completed") return "confirmada";
   if (status === "cancelled") return "rechazada";
   return "en_evaluacion";
+}
+
+// Datos del appointment que vienen del endpoint público enriquecido
+interface AppointmentPublicData {
+  id: string;
+  status: string;
+  clientName: string;
+  clientEmail: string;
+  startTime: string;
+  endTime?: string;
+  calendarSlug?: string;
+}
+
+interface CalendarConfigState {
+  amount: number;
+  currency: string;
+  payments: CalendarPayments;
 }
 
 export default function ZytaStatus() {
@@ -27,13 +56,28 @@ export default function ZytaStatus() {
   const calendarSlugFromUrl = searchParams.get("calendarSlug");
   const calendarSlugFromStorage =
     typeof localStorage !== "undefined" ? localStorage.getItem("bookingCalendarSlug") : null;
-  const calendarSlug = calendarSlugFromUrl || calendarSlugFromStorage;
 
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [estado, setEstado] = useState<ZytaEstado>("en_evaluacion");
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+  const [appointmentData, setAppointmentData] = useState<AppointmentPublicData | null>(null);
+  const [calendarConfig, setCalendarConfig] = useState<CalendarConfigState | null>(null);
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(true);
+  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [transferProofFile, setTransferProofFile] = useState<File | null>(null);
 
-  // Fetchear el estado real del appointment
+  const createPreferenceMutation = useCreateMercadoPagoPreference();
+  const createGalioPayLinkMutation = useCreateGalioPayLink();
+
+  // calendarSlug: URL param > localStorage > campo del appointment
+  const calendarSlug =
+    calendarSlugFromUrl ||
+    calendarSlugFromStorage ||
+    appointmentData?.calendarSlug ||
+    null;
+
+  // Fetchear estado y datos del appointment
   useEffect(() => {
     if (!id) {
       setIsLoadingStatus(false);
@@ -50,8 +94,9 @@ export default function ZytaStatus() {
       try {
         const res = await fetch(`${backendUrl}/appointments/public/${encodeURIComponent(id)}/status`);
         if (!cancelled && res.ok) {
-          const data = await res.json() as { id: string; status: string };
+          const data = await res.json() as AppointmentPublicData;
           setEstado(beStatusToEstado(data.status));
+          setAppointmentData(data);
         }
       } catch {
         // ignore, keep default "en_evaluacion"
@@ -62,7 +107,6 @@ export default function ZytaStatus() {
 
     void fetchStatus();
 
-    // Polling cada 30 segundos para detectar confirmación en tiempo real
     const interval = setInterval(() => { void fetchStatus(); }, 30_000);
 
     return () => {
@@ -71,8 +115,81 @@ export default function ZytaStatus() {
     };
   }, [id]);
 
+  const effectiveSlug =
+    calendarSlugFromUrl ||
+    calendarSlugFromStorage ||
+    appointmentData?.calendarSlug ||
+    null;
+
+  // Sin slug: dejar de cargar solo cuando el status ya respondió (puede venir calendarSlug en el body)
+  useEffect(() => {
+    if (!effectiveSlug && !isLoadingStatus) {
+      setIsLoadingCalendar(false);
+    }
+  }, [effectiveSlug, isLoadingStatus]);
+
+  // Fetchear config del calendario (monto + métodos de pago completos)
+  useEffect(() => {
+    if (!effectiveSlug) {
+      return;
+    }
+
+    const backendUrl = getBackendUrl();
+    if (!backendUrl) {
+      setIsLoadingCalendar(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingCalendar(true);
+
+    const fetchCalendar = async () => {
+      try {
+        const res = await fetch(`${backendUrl}/calendars/public/${encodeURIComponent(effectiveSlug)}`);
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          const rawAmount = data.amount;
+          const amount =
+            typeof rawAmount === "string" ? parseFloat(rawAmount)
+            : typeof rawAmount === "number" ? rawAmount
+            : 0;
+          setCalendarConfig({
+            amount: Number.isFinite(amount) ? amount : 0,
+            currency: data.currency ?? "ARS",
+            payments: data.payments ?? { enabled: [] },
+          });
+        } else if (!cancelled) {
+          setCalendarConfig(null);
+        }
+      } catch {
+        if (!cancelled) setCalendarConfig(null);
+      } finally {
+        if (!cancelled) setIsLoadingCalendar(false);
+      }
+    };
+
+    void fetchCalendar();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveSlug]);
+
+  useEffect(() => {
+    if (!calendarConfig) {
+      setSelectedPaymentMethod(null);
+      return;
+    }
+    setSelectedPaymentMethod(pickDefaultPaymentMethod(calendarConfig.payments));
+    setTransferProofFile(null);
+  }, [calendarConfig]);
+
   const goToCalendar = (slug: string) => {
     window.location.href = `${window.location.origin}/${slug}`;
+  };
+
+  const handlePaymentMethodChange = (m: PaymentMethod) => {
+    if (m !== "transfer") setTransferProofFile(null);
+    setSelectedPaymentMethod(m);
   };
 
   const handleGoBack = async () => {
@@ -107,6 +224,124 @@ export default function ZytaStatus() {
     window.location.href = LANDING_URL;
   };
 
+  const handlePagarAhora = async () => {
+    if (!calendarConfig || !calendarSlug || !id) {
+      toast.error("No se pudo iniciar el pago. Recargá la página.");
+      return;
+    }
+    const method = selectedPaymentMethod;
+    if (!method) {
+      toast.error("Elegí un método de pago.");
+      return;
+    }
+    if (method === "transfer" && !transferProofFile) {
+      toast.error("Subí el comprobante de transferencia para continuar.");
+      return;
+    }
+    if (!hasSelectablePaymentMethods(calendarConfig.payments)) {
+      toast.error("Este calendario no tiene métodos de pago configurados.");
+      return;
+    }
+
+    setIsPaymentLoading(true);
+
+    const baseUrl = window.location.origin;
+    const lastBooking = {
+      appointmentId: id,
+      calendarSlug,
+      clientName: appointmentData?.clientName ?? "",
+      clientEmail: appointmentData?.clientEmail ?? "",
+      startTime: appointmentData?.startTime ?? new Date().toISOString(),
+      endTime: appointmentData?.endTime,
+      paymentMethod: method,
+      confirmedAt: new Date().toISOString(),
+      skipCancellation: true,
+    };
+
+    try {
+      if (method === "mercadopago") {
+        const successParams = new URLSearchParams({
+          calendarSlug,
+          method: "mercadopago",
+          ...(appointmentData?.clientName
+            ? { name: encodeURIComponent(appointmentData.clientName) }
+            : {}),
+        });
+        const successUrl = `${baseUrl}/payment/success?${successParams.toString()}`;
+        const failureUrl = `${baseUrl}/payment/failure?calendarSlug=${encodeURIComponent(calendarSlug)}&appointmentId=${encodeURIComponent(id)}`;
+        const pendingUrl = `${baseUrl}/payment/pending?calendarSlug=${encodeURIComponent(calendarSlug)}`;
+
+        const data = await createPreferenceMutation.mutateAsync({
+          calendarSlug,
+          amount: calendarConfig.amount,
+          currency: calendarConfig.currency,
+          successUrl,
+          failureUrl,
+          pendingUrl,
+        });
+        localStorage.setItem("lastBooking", JSON.stringify(lastBooking));
+        window.location.href = data.initPoint;
+
+      } else if (method === "galiopay") {
+        const successParams = new URLSearchParams({
+          calendarSlug,
+          method: "galiopay",
+          ...(appointmentData?.clientName
+            ? { name: encodeURIComponent(appointmentData.clientName) }
+            : {}),
+        });
+        const successUrl = `${baseUrl}/payment/success?${successParams.toString()}`;
+        const failureUrl = `${baseUrl}/payment/failure?calendarSlug=${encodeURIComponent(calendarSlug)}&appointmentId=${encodeURIComponent(id)}`;
+
+        const data = await createGalioPayLinkMutation.mutateAsync({
+          calendarSlug,
+          amount: calendarConfig.amount,
+          currency: calendarConfig.currency,
+          successUrl,
+          failureUrl,
+          referenceId: id,
+        });
+        localStorage.setItem("lastBooking", JSON.stringify(lastBooking));
+        window.location.href = data.checkoutUrl;
+
+      } else {
+        localStorage.setItem("lastBooking", JSON.stringify(lastBooking));
+        const params = new URLSearchParams({
+          calendarSlug,
+          method,
+          ...(appointmentData?.clientName
+            ? { name: encodeURIComponent(appointmentData.clientName) }
+            : {}),
+        });
+        window.location.href = `/payment/success?${params.toString()}`;
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al procesar el pago.");
+      setIsPaymentLoading(false);
+    }
+  };
+
+  const hasMethods = calendarConfig
+    ? hasSelectablePaymentMethods(calendarConfig.payments)
+    : false;
+  const needsTransferProof =
+    selectedPaymentMethod === "transfer" && !transferProofFile;
+  const isRealPayment =
+    selectedPaymentMethod === "mercadopago" ||
+    selectedPaymentMethod === "galiopay" ||
+    selectedPaymentMethod === "transfer";
+  const primaryLabel = isPaymentLoading
+    ? "Procesando..."
+    : isRealPayment
+      ? "Pagar"
+      : "Confirmar reserva";
+  const canSubmitPayment =
+    !!calendarConfig &&
+    hasMethods &&
+    !!selectedPaymentMethod &&
+    !needsTransferProof &&
+    !isLoadingCalendar;
+
   return (
     <div
       className="min-h-screen relative flex items-center justify-center p-4"
@@ -119,7 +354,7 @@ export default function ZytaStatus() {
       }}
     >
       <div className="absolute inset-0 bg-black/60" />
-      <div className="relative z-10 w-full max-w-lg">
+      <div className="relative z-10 w-full max-w-xl">
         <div
           className="rounded-[18px] border border-gray-200 bg-white p-6 shadow-xl"
           style={{
@@ -164,19 +399,14 @@ export default function ZytaStatus() {
                       disabled={isRedirecting}
                     >
                       {isRedirecting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Redirigiendo...
-                        </>
-                      ) : (
-                        "Volver al inicio"
-                      )}
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Redirigiendo...</>
+                      ) : "Volver al inicio"}
                     </Button>
                   </div>
                 </>
               )}
 
-              {estado === "confirmada" && (
+              {estado === "confirmada_pendiente_pago" && (
                 <>
                   <div className="flex justify-center mb-4">
                     <div className="rounded-full bg-green-100/90 p-4">
@@ -194,6 +424,102 @@ export default function ZytaStatus() {
                       Referencia: {id}
                     </p>
                   )}
+
+                  {isLoadingCalendar && (
+                    <div className="flex justify-center items-center gap-2 py-6 text-sm text-gray-500">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Cargando métodos de pago…
+                    </div>
+                  )}
+
+                  {!isLoadingCalendar && calendarConfig && (
+                    <>
+                      <Card
+                        className="p-4 border border-gray-100 mb-4 mt-4"
+                        style={{ borderRadius: "var(--style-border-radius, 0.75rem)" }}
+                      >
+                        <p className="text-sm font-semibold text-gray-900 mb-1">Valor a abonar</p>
+                        <p className="text-base text-gray-700">
+                          {calendarConfig.currency ?? "$"}{" "}
+                          {calendarConfig.amount.toLocaleString("es-AR")}
+                        </p>
+                      </Card>
+
+                      <PaymentMethodPicker
+                        compact
+                        payments={calendarConfig.payments}
+                        paymentMethod={selectedPaymentMethod}
+                        onPaymentMethodChange={handlePaymentMethodChange}
+                        transferProofFile={transferProofFile}
+                        onTransferProofChange={setTransferProofFile}
+                      />
+
+                      {needsTransferProof && (
+                        <p className="mb-3 text-sm text-gray-500">
+                          Subí el comprobante de transferencia para poder continuar.
+                        </p>
+                      )}
+                    </>
+                  )}
+
+                  {!isLoadingCalendar && !calendarConfig && effectiveSlug && (
+                    <p className="text-sm text-center text-gray-600 mt-4">
+                      No pudimos cargar los métodos de pago. Recargá la página o volvé al inicio e intentá de nuevo.
+                    </p>
+                  )}
+
+                  {!isLoadingCalendar && !calendarConfig && !effectiveSlug && (
+                    <p className="text-sm text-center text-gray-600 mt-4">
+                      Falta el enlace al calendario. Abrí el link del email o contactá al profesional.
+                    </p>
+                  )}
+
+                  <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button
+                      size="lg"
+                      className="w-full sm:w-auto font-semibold text-white"
+                      style={{ backgroundColor: "#FF6600", fontFamily: "Inter, sans-serif" }}
+                      onClick={() => void handlePagarAhora()}
+                      disabled={isPaymentLoading || !canSubmitPayment}
+                    >
+                      {isPaymentLoading ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Procesando...</>
+                      ) : primaryLabel}
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                      onClick={() => void handleGoBack()}
+                      disabled={isRedirecting || isPaymentLoading}
+                    >
+                      {isRedirecting ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Redirigiendo...</>
+                      ) : "Volver al inicio"}
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {estado === "confirmada" && (
+                <>
+                  <div className="flex justify-center mb-4">
+                    <div className="rounded-full bg-green-100/90 p-4">
+                      <CheckCircle className="h-12 w-12 text-green-600" />
+                    </div>
+                  </div>
+                  <h1 className="text-2xl font-bold text-gray-900 text-center">
+                    Confirmada
+                  </h1>
+                  <p className="text-sm text-gray-600 text-center mt-2">
+                    Tu consulta está confirmada y el pago fue recibido.
+                  </p>
+                  {id && (
+                    <p className="text-xs text-gray-400 text-center mt-4">
+                      Referencia: {id}
+                    </p>
+                  )}
                   <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
                     <Button
                       size="lg"
@@ -204,13 +530,8 @@ export default function ZytaStatus() {
                       disabled={isRedirecting}
                     >
                       {isRedirecting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Redirigiendo...
-                        </>
-                      ) : (
-                        "Volver al inicio"
-                      )}
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Redirigiendo...</>
+                      ) : "Volver al inicio"}
                     </Button>
                   </div>
                 </>
@@ -238,13 +559,8 @@ export default function ZytaStatus() {
                       disabled={isRedirecting}
                     >
                       {isRedirecting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Redirigiendo...
-                        </>
-                      ) : (
-                        "Volver al inicio"
-                      )}
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Redirigiendo...</>
+                      ) : "Volver al inicio"}
                     </Button>
                   </div>
                 </>
