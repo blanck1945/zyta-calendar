@@ -26,10 +26,25 @@ function getBackendUrl(): string {
   return (import.meta.env.VITE_BACKEND_URL || "").replace(/\/+$/, "");
 }
 
-function beStatusToEstado(status: string): ZytaEstado {
-  if (status === "confirmed_pending_payment") return "confirmada_pendiente_pago";
-  if (status === "confirmed" || status === "completed") return "confirmada";
-  if (status === "cancelled") return "rechazada";
+/**
+ * Mapea la respuesta pública del appointment al estado de la UI.
+ * El BE debe usar `confirmed_pending_payment` cuando falta el pago; si envía flags
+ * opcionales, los usamos aunque `status` venga mal (p. ej. legacy `confirmed` sin cobro).
+ */
+function resolveEstadoFromPublicData(data: AppointmentPublicData): ZytaEstado {
+  const s = data.status;
+  if (s === "confirmed_pending_payment") return "confirmada_pendiente_pago";
+  if (s === "cancelled") return "rechazada";
+
+  const mustPay =
+    data.awaitingClientPayment === true ||
+    data.paymentPending === true ||
+    data.requiresClientPayment === true ||
+    (s === "confirmed" && data.paymentReceived === false);
+
+  if (mustPay) return "confirmada_pendiente_pago";
+
+  if (s === "confirmed" || s === "completed") return "confirmada";
   return "en_evaluacion";
 }
 
@@ -42,6 +57,12 @@ interface AppointmentPublicData {
   startTime: string;
   endTime?: string;
   calendarSlug?: string;
+  /** true = falta que el cliente pague (mostrar flujo de pago aunque status sea legacy). */
+  awaitingClientPayment?: boolean;
+  paymentPending?: boolean;
+  requiresClientPayment?: boolean;
+  /** false explícito: aún no se registró pago (útil si status viene como confirmed por error). */
+  paymentReceived?: boolean;
 }
 
 interface CalendarConfigState {
@@ -95,7 +116,7 @@ export default function ZytaStatus() {
         const res = await fetch(`${backendUrl}/appointments/public/${encodeURIComponent(id)}/status`);
         if (!cancelled && res.ok) {
           const data = await res.json() as AppointmentPublicData;
-          setEstado(beStatusToEstado(data.status));
+          setEstado(resolveEstadoFromPublicData(data));
           setAppointmentData(data);
         }
       } catch {
