@@ -69,11 +69,15 @@ export default function PaymentSuccess() {
   const getPaymentMethodLabel = (method: string) => {
     const labels: Record<string, string> = {
       mercadopago: "Mercado Pago",
+      galiopay: "GalioPay",
       transfer: "Transferencia bancaria",
       coordinar: "Coordinar",
     };
     return labels[method] || method;
   };
+
+  const isOnlinePayment =
+    paymentMethod === "mercadopago" || paymentMethod === "galiopay";
 
   return (
     <div
@@ -102,10 +106,10 @@ export default function PaymentSuccess() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold text-foreground">
-            {paymentMethod === "mercadopago" ? "¡Pago Exitoso!" : "¡Reserva Confirmada!"}
+            {isOnlinePayment ? "¡Pago Exitoso!" : "¡Reserva Confirmada!"}
           </CardTitle>
           <CardDescription className="text-base mt-2">
-            {paymentMethod === "mercadopago"
+            {isOnlinePayment
               ? "Tu pago se ha procesado correctamente"
               : "Tu reserva ha sido registrada exitosamente"}
           </CardDescription>
@@ -150,7 +154,7 @@ export default function PaymentSuccess() {
                 </div>
               </div>
 
-              {paymentMethod && paymentMethod !== "mercadopago" && (
+              {paymentMethod && !isOnlinePayment && (
                 <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                   <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
                     Método de pago: {getPaymentMethodLabel(paymentMethod)}

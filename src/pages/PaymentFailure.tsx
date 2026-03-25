@@ -19,21 +19,17 @@ export default function PaymentFailure() {
       console.log("Payment failure details:", { paymentId, status });
     }
     // Cancelar el appointment para liberar el horario
+    // Pero NO cancelar si es un appointment ya confirmado por el profesional
+    const bookingRaw = localStorage.getItem("lastBooking");
+    const booking = bookingRaw ? (() => { try { return JSON.parse(bookingRaw); } catch { return null; } })() : null;
+    if (booking?.skipCancellation) {
+      localStorage.removeItem("lastBooking");
+      return;
+    }
     if (appointmentId) {
       cancelAppointment.mutate(appointmentId);
-    } else {
-      // Fallback: intentar cancelar desde localStorage si no viene en la URL
-      try {
-        const lastBooking = localStorage.getItem("lastBooking");
-        if (lastBooking) {
-          const booking = JSON.parse(lastBooking);
-          if (booking?.appointmentId) {
-            cancelAppointment.mutate(booking.appointmentId);
-          }
-        }
-      } catch {
-        // ignorar
-      }
+    } else if (booking?.appointmentId) {
+      cancelAppointment.mutate(booking.appointmentId);
     }
   // Solo ejecutar al montar
   // eslint-disable-next-line react-hooks/exhaustive-deps

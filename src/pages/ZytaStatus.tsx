@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -26,25 +26,111 @@ function getBackendUrl(): string {
   return (import.meta.env.VITE_BACKEND_URL || "").replace(/\/+$/, "");
 }
 
-/**
- * Mapea la respuesta pública del appointment al estado de la UI.
- * El BE debe usar `confirmed_pending_payment` cuando falta el pago; si envía flags
- * opcionales, los usamos aunque `status` venga mal (p. ej. legacy `confirmed` sin cobro).
- */
-function resolveEstadoFromPublicData(data: AppointmentPublicData): ZytaEstado {
-  const s = data.status;
-  if (s === "confirmed_pending_payment") return "confirmada_pendiente_pago";
-  if (s === "cancelled") return "rechazada";
+function normalizeStatus(status: string | undefined): string {
+  if (status == null || status === "") return "";
+  return String(status).trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
 
-  const mustPay =
+/** El BE indica explícitamente que el cobro ya se registró. */
+function isPaidSignal(data: AppointmentPublicData): boolean {
+  if (data.paymentReceived === true) return true;
+  if (data.paidAt != null && String(data.paidAt).length > 0) return true;
+  const ps = normalizeStatus(data.paymentStatus);
+  if (ps === "paid" || ps === "completed" || ps === "succeeded" || ps === "received") {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Estados que suelen significar: profesional aceptó / turno listo, falta que pague el cliente.
+ * (Nombres distintos a `confirmed_pending_payment` según BE.)
+ */
+const STATUS_AWAITING_CLIENT_PAYMENT = new Set([
+  "confirmed_pending_payment",
+  "confirmed_pending",
+  "pending_payment",
+  "awaiting_payment",
+  "awaiting_client_payment",
+  "payment_pending",
+  "approved",
+  "accepted",
+  "ready_for_payment",
+  "scheduled_pending_payment",
+  "waiting_payment",
+  "payment_required",
+]);
+
+const STATUS_IN_EVALUATION = new Set([
+  "pending",
+  "in_review",
+  "under_review",
+  "evaluation",
+  "awaiting_review",
+  "submitted",
+  "new",
+]);
+
+/**
+ * Combina respuesta del appointment y config pública del calendario.
+ * Si el BE marca `confirmed` antes de registrar el pago, usamos `confirmCaseBeforePayment`
+ * + métodos de pago del calendario para seguir mostrando la pantalla de cobro.
+ */
+function deriveEstado(
+  data: AppointmentPublicData | null,
+  calendarConfig: CalendarConfigState | null
+): ZytaEstado {
+  if (!data?.status) return "en_evaluacion";
+
+  const s = normalizeStatus(data.status);
+
+  if (
+    s === "cancelled" ||
+    s === "canceled" ||
+    s === "rejected" ||
+    s === "declined"
+  ) {
+    return "rechazada";
+  }
+
+  if (data.needsPayment === true) return "confirmada_pendiente_pago";
+
+  const mustPayFlags =
     data.awaitingClientPayment === true ||
     data.paymentPending === true ||
     data.requiresClientPayment === true ||
     (s === "confirmed" && data.paymentReceived === false);
 
-  if (mustPay) return "confirmada_pendiente_pago";
+  if (mustPayFlags) return "confirmada_pendiente_pago";
 
-  if (s === "confirmed" || s === "completed") return "confirmada";
+  if (STATUS_AWAITING_CLIENT_PAYMENT.has(s)) return "confirmada_pendiente_pago";
+
+  if (s === "confirmed" || s === "completed") {
+    if (isPaidSignal(data)) return "confirmada";
+
+    const pm = normalizeStatus(data.paymentMethod ?? "");
+    const methodSaysUnpaid = ["pending", "unpaid", "none", "awaiting_payment", ""].includes(
+      pm
+    );
+
+    if (
+      calendarConfig != null &&
+      hasSelectablePaymentMethods(calendarConfig.payments) &&
+      !isPaidSignal(data)
+    ) {
+      if (calendarConfig.confirmCaseBeforePayment === true) {
+        return "confirmada_pendiente_pago";
+      }
+      if (data.paymentMethod !== undefined && methodSaysUnpaid) {
+        return "confirmada_pendiente_pago";
+      }
+    }
+
+    return "confirmada";
+  }
+
+  if (STATUS_IN_EVALUATION.has(s)) return "en_evaluacion";
+
   return "en_evaluacion";
 }
 
@@ -63,23 +149,34 @@ interface AppointmentPublicData {
   requiresClientPayment?: boolean;
   /** false explícito: aún no se registró pago (útil si status viene como confirmed por error). */
   paymentReceived?: boolean;
+  /** Si el BE lo envía, prioriza UI de pago. */
+  needsPayment?: boolean;
+  /** ISO u otro; si existe, asumimos cobro registrado junto con `confirmed`. */
+  paidAt?: string;
+  paymentStatus?: string;
+  /** Ej. "mercadopago" tras cobrar; "pending" si el BE indica que falta pagar. */
+  paymentMethod?: string;
 }
 
 interface CalendarConfigState {
   amount: number;
   currency: string;
   payments: CalendarPayments;
+  /** Viene de bookingSettings del calendario público. */
+  confirmCaseBeforePayment?: boolean;
 }
 
 export default function ZytaStatus() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const calendarSlugFromUrl = searchParams.get("calendarSlug");
+  /** Link desde email de confirmación (BE añade ?pay=1) para enfocar la sección de cobro en el calendario público. */
+  const payFromEmail = searchParams.get("pay") === "1";
+  const paymentSectionRef = useRef<HTMLDivElement>(null);
   const calendarSlugFromStorage =
     typeof localStorage !== "undefined" ? localStorage.getItem("bookingCalendarSlug") : null;
 
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [estado, setEstado] = useState<ZytaEstado>("en_evaluacion");
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
   const [appointmentData, setAppointmentData] = useState<AppointmentPublicData | null>(null);
   const [calendarConfig, setCalendarConfig] = useState<CalendarConfigState | null>(null);
@@ -116,7 +213,6 @@ export default function ZytaStatus() {
         const res = await fetch(`${backendUrl}/appointments/public/${encodeURIComponent(id)}/status`);
         if (!cancelled && res.ok) {
           const data = await res.json() as AppointmentPublicData;
-          setEstado(resolveEstadoFromPublicData(data));
           setAppointmentData(data);
         }
       } catch {
@@ -178,6 +274,8 @@ export default function ZytaStatus() {
             amount: Number.isFinite(amount) ? amount : 0,
             currency: data.currency ?? "ARS",
             payments: data.payments ?? { enabled: [] },
+            confirmCaseBeforePayment:
+              data.bookingSettings?.confirmCaseBeforePayment === true,
           });
         } else if (!cancelled) {
           setCalendarConfig(null);
@@ -203,6 +301,24 @@ export default function ZytaStatus() {
     setSelectedPaymentMethod(pickDefaultPaymentMethod(calendarConfig.payments));
     setTransferProofFile(null);
   }, [calendarConfig]);
+
+  const estado: ZytaEstado = useMemo(
+    () => deriveEstado(appointmentData, calendarConfig),
+    [appointmentData, calendarConfig]
+  );
+
+  useEffect(() => {
+    if (!payFromEmail) return;
+    if (estado !== "confirmada_pendiente_pago") return;
+    if (isLoadingCalendar || !calendarConfig) return;
+    const t = window.setTimeout(() => {
+      paymentSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 200);
+    return () => window.clearTimeout(t);
+  }, [payFromEmail, estado, isLoadingCalendar, calendarConfig]);
 
   const goToCalendar = (slug: string) => {
     window.location.href = `${window.location.origin}/${slug}`;
@@ -454,7 +570,7 @@ export default function ZytaStatus() {
                   )}
 
                   {!isLoadingCalendar && calendarConfig && (
-                    <>
+                    <div ref={paymentSectionRef} className="scroll-mt-6">
                       <Card
                         className="p-4 border border-gray-100 mb-4 mt-4"
                         style={{ borderRadius: "var(--style-border-radius, 0.75rem)" }}
@@ -480,7 +596,7 @@ export default function ZytaStatus() {
                           Subí el comprobante de transferencia para poder continuar.
                         </p>
                       )}
-                    </>
+                    </div>
                   )}
 
                   {!isLoadingCalendar && !calendarConfig && effectiveSlug && (

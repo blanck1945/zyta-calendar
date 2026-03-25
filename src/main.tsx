@@ -13,6 +13,7 @@ import PaymentPending from "./pages/PaymentPending";
 import PaymentFailure from "./pages/PaymentFailure";
 import CaseUnderReview from "./pages/CaseUnderReview";
 import ZytaStatus from "./pages/ZytaStatus";
+import ZytaJuridico from "./pages/ZytaJuridico";
 
 // Configurar QueryClient
 const queryClient = new QueryClient({
@@ -45,6 +46,10 @@ const router = createBrowserRouter([
   {
     path: "/zyta/:id/estado",
     element: <ZytaStatus />,
+  },
+  {
+    path: "/juridico",
+    element: <ZytaJuridico />,
   },
   {
     path: "/:idCalendario",
