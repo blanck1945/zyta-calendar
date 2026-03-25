@@ -105,6 +105,13 @@ interface CalendarResponse {
     createdAt: string;
     updatedAt: string;
   }>;
+  /** Cupo mensual del plan del profesional (GET /calendars/public/:slug) */
+  bookingQuota?: {
+    canBook: boolean;
+    limit: number;
+    used: number;
+    remaining: number;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -200,6 +207,12 @@ export interface CalendarSchedule {
   bookingForm?: BookingForm;
   bookingSettings?: BookingSettings;
   appointments?: Appointment[];
+  bookingQuota?: {
+    canBook: boolean;
+    limit: number;
+    used: number;
+    remaining: number;
+  };
 }
 
 /**
@@ -244,6 +257,7 @@ function transformCalendarResponse(
     bookingForm: response.bookingForm,
     bookingSettings: response.bookingSettings,
     appointments: response.appointments || [],
+    bookingQuota: response.bookingQuota,
   };
 }
 

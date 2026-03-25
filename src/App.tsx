@@ -62,6 +62,11 @@ function App() {
     error: scheduleError,
   } = useCalendarSchedule();
 
+  /** Cupo mensual del plan del profesional: sin cupo → no mostrar flujo de reserva */
+  const isQuotaFull = Boolean(
+    schedule?.bookingQuota && !schedule.bookingQuota.canBook
+  );
+
   // Inicializar variante de estilo al cargar la app
   useEffect(() => {
     const saved = localStorage.getItem(
@@ -270,6 +275,12 @@ function App() {
     setPaymentMethod,
     reset: resetBooking,
   } = useBookingStore();
+
+  useEffect(() => {
+    if (isQuotaFull) {
+      resetBooking();
+    }
+  }, [isQuotaFull, resetBooking]);
 
   // Escuchar cambios desde el ThemeSwitcher y cambios en localStorage
   useEffect(() => {
@@ -1051,10 +1062,15 @@ function App() {
       const lastBooking = localStorage.getItem("lastBooking");
       if (lastBooking) {
         const booking = JSON.parse(lastBooking);
-        if (booking?.appointmentId) {
+        if (booking?.skipCancellation) {
+          localStorage.removeItem("lastBooking");
+          // appointment confirmado por el profesional — no cancelar
+        } else if (booking?.appointmentId) {
           cancelAppointmentMutation.mutate(booking.appointmentId);
+          localStorage.removeItem("lastBooking");
+        } else {
+          localStorage.removeItem("lastBooking");
         }
-        localStorage.removeItem("lastBooking");
       }
     } catch {
       localStorage.removeItem("lastBooking");
@@ -1230,6 +1246,16 @@ function App() {
 
   // Títulos y subtítulos dinámicos (guía: Inter Extra Bold 800, 32–36px, #FFFFFF)
   const stepTitles = useMemo(() => {
+    if (isQuotaFull && schedule) {
+      return {
+        title:
+          schedule.calendarTitle ||
+          import.meta.env.VITE_STEP1_TITLE ||
+          "Calendario",
+        subtitle:
+          "Por el momento no hay cupo para nuevas reservas este mes. Podés volver a intentar más adelante o contactar al profesional por otros medios.",
+      };
+    }
     switch (step) {
       case 1:
         return {
@@ -1276,7 +1302,16 @@ function App() {
           subtitle: step1Subtitle,
         };
     }
-  }, [step, name, paymentMethod, step1Title, step1Subtitle, reviewBeforePayment]);
+  }, [
+    step,
+    name,
+    paymentMethod,
+    step1Title,
+    step1Subtitle,
+    reviewBeforePayment,
+    isQuotaFull,
+    schedule,
+  ]);
 
   // Stepper: flujo dinámico según confirmCaseBeforePayment (evaluar antes de cobrar)
   // Con evaluación: Elegí turno → Contanos tu consulta → Evaluación → Pago
@@ -1321,7 +1356,11 @@ function App() {
         >
           <Loader2 className="h-12 w-12 animate-spin text-orange-500" aria-hidden />
           <p className="text-lg font-medium text-white">
-            {createPreferenceMutation.isPending ? "Redirigiendo a Mercado Pago..." : "Confirmando tu reserva..."}
+            {createPreferenceMutation.isPending
+              ? "Redirigiendo a Mercado Pago..."
+              : createGalioPayLinkMutation.isPending
+                ? "Redirigiendo a GalioPay..."
+                : "Confirmando tu reserva..."}
           </p>
           <p className="text-sm text-gray-400">No cierres esta ventana</p>
         </div>
@@ -1355,6 +1394,7 @@ function App() {
           >
             {/* Stepper + links: en mobile/tablet columna centrada (stepper arriba, links abajo); en desktop fila con links a la derecha */}
             <div className="px-3 sm:px-4 md:px-8 py-4 md:py-5 border-b border-gray-100 flex flex-col items-center gap-4 lg:flex-row lg:justify-between lg:items-center" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>
+              {!isQuotaFull && (
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-3 lg:gap-x-6 lg:gap-y-0">
                 {stepperItems.map((item, idx) => (
                   <div key={item.num} className="flex items-center shrink-0">
@@ -1390,9 +1430,10 @@ function App() {
                   </div>
                 ))}
               </div>
+              )}
               {/* Links: en mobile/tablet debajo del stepper y centrados; en desktop a la derecha */}
               {schedule?.links && schedule.links.length > 0 && (
-                <div className="flex shrink-0 justify-center lg:justify-end">
+                <div className={`flex shrink-0 justify-center lg:justify-end ${isQuotaFull ? "w-full lg:w-auto" : ""}`}>
                   <SocialLinks links={schedule.links} />
                 </div>
               )}
@@ -1401,6 +1442,17 @@ function App() {
             {/* Contenido principal */}
             <div className="p-6 md:p-8">
               <section>
+          {isQuotaFull && schedule ? (
+            <div className="text-center py-12 px-4 max-w-lg mx-auto">
+              <p className="text-lg font-semibold text-zinc-900 mb-3">
+                Cupo de Zytas completo
+              </p>
+              <p className="text-zinc-600 text-sm leading-relaxed">
+                El profesional alcanzó el límite mensual de turnos de su plan. Podés volver a intentar más adelante o usar los enlaces de contacto si están disponibles.
+              </p>
+            </div>
+          ) : (
+          <>
           {step === 1 && (
             <>
               {scheduleLoading && (
@@ -1543,6 +1595,8 @@ function App() {
                 error={paymentError}
               />
             </Suspense>
+          )}
+          </>
           )}
               </section>
             </div>
