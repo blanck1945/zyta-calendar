@@ -1458,31 +1458,13 @@ function App() {
         </div>
       )}
 
-      <div className="relative z-10 min-h-screen">
-        {/* Header superior */}
-        <header className="px-4 md:px-8 pt-8 pb-6">
-          <div className="max-w-[90%] mx-auto">
-            {/* Título principal - Inter Extra Bold 800, 32–36px, #FFFFFF */}
-            <h1 
-              className="text-white font-extrabold mb-3 tracking-tight text-[32px] md:text-[34px] lg:text-[36px]"
-              style={{ fontFamily: 'Inter, sans-serif', color: '#FFFFFF' }}
-            >
-              {stepTitles.title}
-            </h1>
-            {/* Subtítulo oculto: gana altura en pantallas bajas; el contenido útil queda más arriba */}
-            <p
-              className="hidden text-gray-400 text-base md:text-lg max-w-2xl"
-              style={{ fontFamily: 'Inter, sans-serif' }}
-            >
-              {stepTitles.subtitle}
-            </p>
-          </div>
-        </header>
+      <div className="relative z-10 min-h-screen flex flex-col">
+        <h1 className="sr-only">{stepTitles.title}</h1>
+        <p className="sr-only">{stepTitles.subtitle}</p>
 
-        {/* Sheet blanco flotante */}
-        <main className="px-4 md:px-8 pb-8">
+        <main className="px-3 sm:px-4 md:px-8 pb-4 md:pb-8 pt-3 md:pt-4 flex-1 flex flex-col min-h-0">
           <div 
-            className="w-[90%] mx-auto bg-white rounded-2xl shadow-2xl overflow-x-hidden overflow-y-auto max-h-[85vh] scroll-smooth custom-scrollbar"
+            className="w-full max-w-[90rem] mx-auto flex-1 min-h-0 bg-white rounded-2xl shadow-2xl overflow-x-hidden overflow-y-auto max-h-[92vh] md:max-h-[90vh] scroll-smooth custom-scrollbar"
             style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}
           >
             {/* Stepper + links: en mobile/tablet columna centrada (stepper arriba, links abajo); en desktop fila con links a la derecha */}
