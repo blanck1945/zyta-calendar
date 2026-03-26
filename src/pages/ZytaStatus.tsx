@@ -143,6 +143,14 @@ interface AppointmentPublicData {
   startTime: string;
   endTime?: string;
   calendarSlug?: string;
+  /** Título público del calendario (GET /appointments/public/:id/status). */
+  calendarTitle?: string | null;
+  /** Enlace de reserva usado al agendar (modo con/sin pago previo). */
+  entryLink?: {
+    id: string;
+    label: string | null;
+    requiresPaymentBeforeConfirmation?: boolean | null;
+  } | null;
   /** true = falta que el cliente pague (mostrar flujo de pago aunque status sea legacy). */
   awaitingClientPayment?: boolean;
   paymentPending?: boolean;
@@ -156,6 +164,21 @@ interface AppointmentPublicData {
   paymentStatus?: string;
   /** Ej. "mercadopago" tras cobrar; "pending" si el BE indica que falta pagar. */
   paymentMethod?: string;
+}
+
+function formatEntryLinkModeLine(data: AppointmentPublicData): string {
+  if (data.entryLink == null) {
+    return "Modo: reserva general (sin enlace por token)";
+  }
+  const { label, requiresPaymentBeforeConfirmation } = data.entryLink;
+  const base = label?.trim() || "Enlace de reserva";
+  if (requiresPaymentBeforeConfirmation === true) {
+    return `Modo: ${base} · pago previo requerido`;
+  }
+  if (requiresPaymentBeforeConfirmation === false) {
+    return `Modo: ${base} · sin pago previo obligatorio`;
+  }
+  return `Modo: ${base}`;
 }
 
 interface CalendarConfigState {
@@ -505,6 +528,18 @@ export default function ZytaStatus() {
             </div>
           ) : (
             <>
+              {appointmentData && (
+                <div className="mb-4 space-y-1 text-center border-b border-gray-100 pb-4">
+                  {(appointmentData.calendarTitle || appointmentData.calendarSlug) && (
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium text-gray-900">Calendario: </span>
+                      {appointmentData.calendarTitle?.trim() ||
+                        appointmentData.calendarSlug}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500">{formatEntryLinkModeLine(appointmentData)}</p>
+                </div>
+              )}
               {estado === "en_evaluacion" && (
                 <>
                   <div className="flex justify-center mb-4">
