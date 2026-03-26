@@ -1,5 +1,6 @@
 // src/components/steps/KairoStepReviewConfirmation.tsx
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "../ui/button";
 import { Loader2 } from "lucide-react";
 
@@ -12,6 +13,7 @@ interface KairoStepReviewConfirmationProps {
   onBack: () => void;
   onSubmit: () => void | Promise<void>;
   isLoading?: boolean;
+  error?: string | null;
 }
 
 function formatTimezoneShort(tz: string): string {
@@ -28,7 +30,12 @@ const KairoStepReviewConfirmation: React.FC<KairoStepReviewConfirmationProps> = 
   onBack,
   onSubmit,
   isLoading = false,
+  error = null,
 }) => {
+  useEffect(() => {
+    if (error) toast.error(error);
+  }, [error]);
+
   const durationMinutes = useMemo(() => {
     if (!meetingStart || !meetingEnd) return null;
     return Math.round((meetingEnd.getTime() - meetingStart.getTime()) / 60000);
