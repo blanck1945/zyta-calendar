@@ -22,6 +22,8 @@ interface KairoStepFormProps {
 
   bookingForm?: BookingForm;
   confirmCaseBeforePayment?: boolean;
+  /** Si false, el flujo no incluye paso de pago (CTA "Reservar Zyta"). Por defecto true. */
+  needsPaymentStep?: boolean;
   isLoading?: boolean;
 
   onChangeName: (v: string) => void;
@@ -101,6 +103,7 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
   customFields = {},
   bookingForm,
   confirmCaseBeforePayment = false,
+  needsPaymentStep = true,
   isLoading = false,
   onChangeName,
   onChangeEmail,
@@ -112,6 +115,17 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
   onBack,
   onContinue,
 }) => {
+  const submitLabel = confirmCaseBeforePayment
+    ? "Enviar consulta"
+    : needsPaymentStep
+      ? "Continuar al pago"
+      : "Reservar Zyta";
+  const loadingLabel = confirmCaseBeforePayment
+    ? "Enviando consulta..."
+    : needsPaymentStep
+      ? "Cargando..."
+      : "Reservando...";
+
   const validationSchema = createValidationSchema(bookingForm);
   const {
     register,
@@ -719,10 +733,10 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {confirmCaseBeforePayment ? "Enviando consulta..." : "Cargando..."}
+                {loadingLabel}
               </>
             ) : (
-              confirmCaseBeforePayment ? "Enviar consulta" : "Continuar al pago"
+              submitLabel
             )}
           </Button>
         </div>

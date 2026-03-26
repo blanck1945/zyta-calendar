@@ -1620,6 +1620,7 @@ function App() {
                 customFields={customFields}
                 bookingForm={schedule?.bookingForm}
                 confirmCaseBeforePayment={schedule?.bookingSettings?.confirmCaseBeforePayment}
+                needsPaymentStep={needsPaymentStep}
                 isLoading={createAppointmentMutation.isPending}
                 onChangeName={setName}
                 onChangeEmail={setEmail}
