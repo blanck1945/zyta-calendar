@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCalendarSlug } from "../utils/useCalendarSlug";
+import { useEntryLinkToken } from "../utils/entryLink";
 
 /**
  * Día de la semana en formato corto (en inglés)
@@ -269,17 +270,18 @@ interface UseCalendarScheduleResult {
 
 /**
  * Hook para obtener la configuración del calendario (días y horarios disponibles)
- * desde el endpoint /calendars/public/:slug usando react-query
+ * desde /calendars/public/:slug o, con ?entryLinkToken=, desde /calendars/public/e/:token
  */
 export function useCalendarSchedule(): UseCalendarScheduleResult {
   const calendarSlug = useCalendarSlug();
+  const entryLinkToken = useEntryLinkToken();
 
   const {
     data: schedule,
     isLoading: loading,
     error: queryError,
   } = useQuery({
-    queryKey: ["calendarSchedule", calendarSlug],
+    queryKey: ["calendarSchedule", calendarSlug, entryLinkToken ?? null],
     queryFn: async (): Promise<CalendarSchedule> => {
       if (!calendarSlug) {
         throw new Error("No se especificó el calendario");
@@ -294,10 +296,13 @@ export function useCalendarSchedule(): UseCalendarScheduleResult {
         );
       }
 
-      const scheduleUrl = `${backendUrl}/calendars/public/${calendarSlug}`;
+      const scheduleUrl = entryLinkToken
+        ? `${backendUrl}/calendars/public/e/${encodeURIComponent(entryLinkToken)}`
+        : `${backendUrl}/calendars/public/${encodeURIComponent(calendarSlug)}`;
 
       console.log("🔍 useCalendarSchedule - Haciendo request:", {
         calendarSlug,
+        entryLinkMode: !!entryLinkToken,
         backendUrl,
         scheduleUrl,
       });

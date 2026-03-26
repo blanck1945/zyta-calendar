@@ -2,6 +2,8 @@ import { useMutation } from "@tanstack/react-query";
 
 export interface CreateAppointmentRequest {
   calendarSlug: string;
+  /** Si viene del flujo ?entryLinkToken=, el POST va a /appointments/public/e/:token */
+  entryLinkToken?: string;
   clientName: string;
   clientEmail: string;
   clientPhone?: string;
@@ -44,8 +46,12 @@ export function useCreateAppointment() {
         throw new Error("calendarSlug es requerido");
       }
 
+      const path = data.entryLinkToken
+        ? `appointments/public/e/${encodeURIComponent(data.entryLinkToken)}`
+        : `appointments/public/${encodeURIComponent(data.calendarSlug)}`;
+
       const response = await fetch(
-        `${backendUrl}/appointments/public/${encodeURIComponent(data.calendarSlug)}`,
+        `${backendUrl}/${path}`,
         {
           method: "POST",
           headers: {

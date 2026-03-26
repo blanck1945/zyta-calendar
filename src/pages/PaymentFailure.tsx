@@ -4,10 +4,12 @@ import { XCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { useCancelAppointment } from "../hooks/useCancelAppointment";
+import { buildCalendarPathWithEntryLink, ENTRY_LINK_TOKEN_QUERY } from "../utils/entryLink";
 
 export default function PaymentFailure() {
   const [searchParams] = useSearchParams();
   const calendarSlug = searchParams.get("calendarSlug");
+  const entryLinkToken = searchParams.get(ENTRY_LINK_TOKEN_QUERY);
   const paymentId = searchParams.get("payment_id");
   const status = searchParams.get("status");
   const appointmentId = searchParams.get("appointmentId");
@@ -37,7 +39,7 @@ export default function PaymentFailure() {
 
   const handleRetry = () => {
     if (calendarSlug) {
-      window.location.href = `/${calendarSlug}`;
+      window.location.href = buildCalendarPathWithEntryLink(calendarSlug, entryLinkToken);
     } else {
       const landingUrl = import.meta.env.VITE_LANDING_URL || "https://zyta-landing.vercel.app/";
       window.location.href = landingUrl;

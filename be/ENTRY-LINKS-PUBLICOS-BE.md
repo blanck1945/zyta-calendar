@@ -1,6 +1,6 @@
 # Enlaces de reserva por token — SPA (Zyta-calendar) y contrato BE
 
-Este documento es la **vista calendario**: cómo debe comportarse el front de reservas frente a la API, y cómo encaja la **URL pública** que genera el dashboard (`/{calendarSlug}/{token}`).
+Este documento es la **vista calendario**: cómo debe comportarse el front de reservas frente a la API, y cómo encaja la **URL pública** que genera el dashboard (`/{calendarSlug}?entryLinkToken=`).
 
 La **fuente canónica** del backend (rutas, payloads y errores) está en el repo **Zyta-be**:
 
@@ -10,25 +10,25 @@ La **fuente canónica** del backend (rutas, payloads y errores) está en el repo
 
 ## 1. URL pública (dashboard → usuario final)
 
-El **Zyta-dashboard** arma enlaces del modo:
+El **Zyta-dashboard** arma enlaces del modo (un solo segmento de ruta; el token va en query para compatibilidad con el router del SPA):
 
 ```text
-{BASE_CALENDAR_SPA}/{calendarSlug}/{token}
+{BASE_CALENDAR_SPA}/{calendarSlug}?entryLinkToken={token}
 ```
 
-Ejemplo: `https://calendar.zyta.app/mi-estudio/abc123...`
+Ejemplo: `https://calendar.zyta.app/mi-estudio?entryLinkToken=abc123...`
 
-| Segmento | Rol |
-|----------|-----|
-| `calendarSlug` | Mismo slug que `GET /calendars/public/:slug` (identificación humana, SEO, coherencia con el link “clásico” por slug). |
-| `token` | Token opaco del enlace; **es lo único que la API necesita** para el modo por token. |
+| Parte | Rol |
+|-------|-----|
+| `calendarSlug` (path) | Mismo slug que `GET /calendars/public/:slug` (la ruta `/:idCalendario` del calendario sigue siendo de un segmento). |
+| `entryLinkToken` (query) | Token opaco del enlace; **es lo que la API usa** en rutas `/public/e/:token`. |
 
-**Importante:** en la API **no** existe `/{slug}/{token}` en el path. Los endpoints públicos por token usan **solo** el token en rutas del estilo `/public/e/:token` (ver §2).
+**Importante:** en la API los endpoints públicos por token usan **solo** el token en paths del estilo `/public/e/:token` (ver §2). El nombre del query param en dashboard y calendario es **`entryLinkToken`** (constante `ENTRY_LINK_TOKEN_QUERY` en ambos repos).
 
-En el SPA, al cargar `/:calendarSlug/:token`:
+En el SPA, al cargar `/:calendarSlug?entryLinkToken=...`:
 
-1. Tomar **`token`** de la URL y usarlo en todas las llamadas `.../public/e/:token/...`.
-2. Opcionalmente validar que el `calendarSlug` coincide con el calendario devuelto por el BE (el payload público incluye datos del calendario; si el usuario cambió un segmento a mano, conviene redirigir o mostrar error).
+1. Leer **`entryLinkToken`** con `useSearchParams` y llamar a `GET /calendars/public/e/:token` (y el resto de endpoints §2 con ese `token`).
+2. Opcionalmente validar que el `calendarSlug` del path coincide con el calendario devuelto por el BE.
 
 ---
 
@@ -70,7 +70,7 @@ Regenerar: `{ "id", "token" }`.
 |--------|---------------------|-------------------------------|
 | Agenda / schedule | Misma | Misma |
 | Reglas | Solo calendario base | Base + override del enlace |
-| URL pública | `/…/{slug}` | `/…/{slug}/{token}` (SPA) + API solo `token` |
+| URL pública | `/…/{slug}` | `/…/{slug}?entryLinkToken=` (SPA) + API solo `token` en `/public/e/:token` |
 
 Podéis seguir ofreciendo el link por slug y enlaces “modo” por token en paralelo.
 

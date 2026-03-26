@@ -36,6 +36,10 @@ import {
   STYLE_VARIANT_NAMES,
 } from "./utils/styleVariants";
 import { useBookingStore } from "./stores/bookingStore";
+import {
+  ENTRY_LINK_TOKEN_QUERY,
+  useEntryLinkToken,
+} from "./utils/entryLink";
 
 // Fallback ligero para Suspense: evita layout shift y da feedback inmediato al cambiar de paso
 const StepFallback = () => (
@@ -56,6 +60,7 @@ const StepFallback = () => (
 function App() {
   const { setThemeFromCalendar } = useTheme();
   const professionalId = useProfessionalId();
+  const entryLinkToken = useEntryLinkToken();
   const {
     schedule,
     loading: scheduleLoading,
@@ -972,6 +977,7 @@ function App() {
     try {
       const appointment = await createAppointmentMutation.mutateAsync({
         calendarSlug: schedule.calendarSlug,
+        entryLinkToken: entryLinkToken ?? undefined,
         clientName: name,
         clientEmail: email,
         clientPhone: phone || undefined,
@@ -1005,6 +1011,7 @@ function App() {
 
       const params = new URLSearchParams();
       params.set("calendarSlug", schedule.calendarSlug);
+      if (entryLinkToken) params.set(ENTRY_LINK_TOKEN_QUERY, entryLinkToken);
       if (name) params.set("userName", encodeURIComponent(name));
       if (appointment?.id) params.set("appointmentId", appointment.id);
       const url = `/case-under-review?${params.toString()}`;
@@ -1106,6 +1113,7 @@ function App() {
     try {
       const appointment = await createAppointmentMutation.mutateAsync({
         calendarSlug,
+        entryLinkToken: entryLinkToken ?? undefined,
         clientName: name,
         clientEmail: email,
         clientPhone: phone || undefined,
@@ -1126,9 +1134,17 @@ function App() {
           method: "mercadopago",
           name: encodeURIComponent(name),
         });
+        if (entryLinkToken) successParams.set(ENTRY_LINK_TOKEN_QUERY, entryLinkToken);
         const successUrl = `${baseUrl}/payment/success?${successParams.toString()}`;
-        const failureUrl = `${baseUrl}/payment/failure?calendarSlug=${calendarSlug}&appointmentId=${appointment.id}`;
-        const pendingUrl = `${baseUrl}/payment/pending?calendarSlug=${calendarSlug}`;
+        const failureParams = new URLSearchParams({
+          calendarSlug,
+          appointmentId: appointment.id,
+        });
+        if (entryLinkToken) failureParams.set(ENTRY_LINK_TOKEN_QUERY, entryLinkToken);
+        const failureUrl = `${baseUrl}/payment/failure?${failureParams.toString()}`;
+        const pendingParams = new URLSearchParams({ calendarSlug });
+        if (entryLinkToken) pendingParams.set(ENTRY_LINK_TOKEN_QUERY, entryLinkToken);
+        const pendingUrl = `${baseUrl}/payment/pending?${pendingParams.toString()}`;
 
         try {
           const data = await createPreferenceMutation.mutateAsync({
@@ -1165,8 +1181,14 @@ function App() {
       } else if (effectiveMethod === "galiopay") {
         const baseUrl = window.location.origin;
         const successParams = new URLSearchParams({ calendarSlug, method: "galiopay", name: encodeURIComponent(name) });
+        if (entryLinkToken) successParams.set(ENTRY_LINK_TOKEN_QUERY, entryLinkToken);
         const successUrl = `${baseUrl}/payment/success?${successParams.toString()}`;
-        const failureUrl = `${baseUrl}/payment/failure?calendarSlug=${calendarSlug}&appointmentId=${appointment.id}`;
+        const failureParams = new URLSearchParams({
+          calendarSlug,
+          appointmentId: appointment.id,
+        });
+        if (entryLinkToken) failureParams.set(ENTRY_LINK_TOKEN_QUERY, entryLinkToken);
+        const failureUrl = `${baseUrl}/payment/failure?${failureParams.toString()}`;
 
         try {
           const data = await createGalioPayLinkMutation.mutateAsync({
@@ -1217,6 +1239,7 @@ function App() {
           method: effectiveMethod,
           name: encodeURIComponent(name),
         });
+        if (entryLinkToken) params.set(ENTRY_LINK_TOKEN_QUERY, entryLinkToken);
         resetBooking();
         window.location.href = `/payment/success?${params.toString()}`;
       }

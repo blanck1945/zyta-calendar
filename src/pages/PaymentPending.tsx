@@ -3,10 +3,12 @@ import { useSearchParams } from "react-router";
 import { Clock } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../components/ui/card";
 import { Button } from "../components/ui/button";
+import { buildCalendarPathWithEntryLink, ENTRY_LINK_TOKEN_QUERY } from "../utils/entryLink";
 
 export default function PaymentPending() {
   const [searchParams] = useSearchParams();
   const calendarSlug = searchParams.get("calendarSlug");
+  const entryLinkToken = searchParams.get(ENTRY_LINK_TOKEN_QUERY);
 
   useEffect(() => {
     // Opcional: Aquí podrías configurar un polling para verificar el estado del pago
@@ -16,7 +18,7 @@ export default function PaymentPending() {
   const handleGoBack = () => {
     // Redirigir al calendario o a la landing
     if (calendarSlug) {
-      window.location.href = `/${calendarSlug}`;
+      window.location.href = buildCalendarPathWithEntryLink(calendarSlug, entryLinkToken);
     } else {
       const landingUrl = import.meta.env.VITE_LANDING_URL || "https://zyta-landing.vercel.app/";
       window.location.href = landingUrl;

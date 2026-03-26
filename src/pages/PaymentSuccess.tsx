@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router";
 import { CheckCircle, Calendar, Clock, User, Mail } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../components/ui/card";
 import { Button } from "../components/ui/button";
+import { buildCalendarPathWithEntryLink, ENTRY_LINK_TOKEN_QUERY } from "../utils/entryLink";
 
 interface BookingData {
   appointmentId: string;
@@ -18,6 +19,7 @@ interface BookingData {
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const calendarSlug = searchParams.get("calendarSlug");
+  const entryLinkToken = searchParams.get(ENTRY_LINK_TOKEN_QUERY);
   const paymentMethod = searchParams.get("method");
   const clientName = searchParams.get("name");
   
@@ -41,7 +43,7 @@ export default function PaymentSuccess() {
   const handleGoBack = () => {
     // Redirigir al calendario o a la landing
     if (calendarSlug) {
-      window.location.href = `/${calendarSlug}`;
+      window.location.href = buildCalendarPathWithEntryLink(calendarSlug, entryLinkToken);
     } else {
       const landingUrl = import.meta.env.VITE_LANDING_URL || "https://zyta-landing.vercel.app/";
       window.location.href = landingUrl;

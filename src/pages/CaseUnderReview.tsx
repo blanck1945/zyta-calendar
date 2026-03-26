@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { User, Mail, CheckCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { buildCalendarPathWithEntryLink, ENTRY_LINK_TOKEN_QUERY } from "../utils/entryLink";
 
 interface FormData {
   name?: string;
@@ -27,6 +28,7 @@ function formatTimezoneShort(tz: string): string {
 export default function CaseUnderReview() {
   const [searchParams] = useSearchParams();
   const calendarSlugFromUrl = searchParams.get("calendarSlug");
+  const entryLinkTokenFromUrl = searchParams.get(ENTRY_LINK_TOKEN_QUERY);
   const calendarSlug = calendarSlugFromUrl || localStorage.getItem("bookingCalendarSlug");
   const appointmentId = searchParams.get("appointmentId");
   const [formData, setFormData] = useState<FormData | null>(null);
@@ -56,7 +58,7 @@ export default function CaseUnderReview() {
 
   const handleGoBack = () => {
     if (calendarSlug) {
-      window.location.href = `${window.location.origin}/${calendarSlug}`;
+      window.location.href = `${window.location.origin}${buildCalendarPathWithEntryLink(calendarSlug, entryLinkTokenFromUrl)}`;
     } else {
       const landingUrl = import.meta.env.VITE_LANDING_URL || "https://zyta-landing.vercel.app/";
       window.location.href = landingUrl;
