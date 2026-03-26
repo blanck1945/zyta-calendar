@@ -1290,9 +1290,11 @@ function App() {
 
         const params = new URLSearchParams({
           calendarSlug,
-          method: effectiveMethod,
           name: encodeURIComponent(name),
         });
+        if (needsPaymentStep) {
+          params.set("method", effectiveMethod);
+        }
         if (entryLinkToken) params.set(ENTRY_LINK_TOKEN_QUERY, entryLinkToken);
         resetBooking();
         window.location.href = `/payment/success?${params.toString()}`;
@@ -1351,7 +1353,9 @@ function App() {
               title: "Tus datos",
               subtitle: name
                 ? "Completá los datos restantes para continuar"
-                : "Completá tus datos para continuar con el modo de pago.",
+                : needsPaymentStep
+                  ? "Completá tus datos para continuar con el modo de pago."
+                  : "Completá tus datos para confirmar tu reserva.",
             };
       case 3:
         return reviewBeforePayment
@@ -1388,27 +1392,38 @@ function App() {
     reviewBeforePayment,
     isQuotaFull,
     schedule,
+    needsPaymentStep,
   ]);
 
-  // Stepper: flujo dinámico según confirmCaseBeforePayment (evaluar antes de cobrar)
-  // Con evaluación: Elegí turno → Contanos tu consulta → Evaluación → Pago
-  // Sin evaluación: Elegí turno → Tus datos → Pago
-  const stepperItems = useMemo(
-    () =>
-      reviewBeforePayment
-        ? [
-            { num: 1, label: "Elegí turno" },
-            { num: 2, label: "Contanos tu consulta" },
-            { num: 3, label: "Evaluación" },
-            { num: 4, label: "Pago" },
-          ]
-        : [
-            { num: 1, label: "Elegí turno" },
-            { num: 2, label: "Tus datos" },
-            { num: 3, label: "Pago" },
-          ],
-    [reviewBeforePayment]
-  );
+  // Stepper: según evaluación (confirmCaseBeforePayment) y si hay paso de pago real (needsPaymentStep)
+  const stepperItems = useMemo(() => {
+    if (reviewBeforePayment) {
+      if (needsPaymentStep) {
+        return [
+          { num: 1, label: "Elegí turno" },
+          { num: 2, label: "Contanos tu consulta" },
+          { num: 3, label: "Evaluación" },
+          { num: 4, label: "Pago" },
+        ];
+      }
+      return [
+        { num: 1, label: "Elegí turno" },
+        { num: 2, label: "Contanos tu consulta" },
+        { num: 3, label: "Evaluación" },
+      ];
+    }
+    if (needsPaymentStep) {
+      return [
+        { num: 1, label: "Elegí turno" },
+        { num: 2, label: "Tus datos" },
+        { num: 3, label: "Pago" },
+      ];
+    }
+    return [
+      { num: 1, label: "Elegí turno" },
+      { num: 2, label: "Tus datos" },
+    ];
+  }, [reviewBeforePayment, needsPaymentStep]);
 
   return (
     <div 

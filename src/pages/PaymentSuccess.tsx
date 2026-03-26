@@ -74,6 +74,7 @@ export default function PaymentSuccess() {
       galiopay: "GalioPay",
       transfer: "Transferencia bancaria",
       coordinar: "Coordinar",
+      cash: "Efectivo",
     };
     return labels[method] || method;
   };

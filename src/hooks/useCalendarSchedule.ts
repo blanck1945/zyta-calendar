@@ -2,6 +2,26 @@ import { useQuery } from "@tanstack/react-query";
 import { useCalendarSlug } from "../utils/useCalendarSlug";
 import { useEntryLinkToken } from "../utils/entryLink";
 
+const MSG_CALENDAR_NOT_FOUND = "Calendario no encontrado";
+const MSG_ENTRY_LINK_NOT_FOUND =
+  "Este enlace no es válido o fue desactivado.";
+const MSG_SLUG_MISMATCH =
+  "La dirección del calendario no coincide con este enlace. Comprobá el enlace o el nombre en la URL.";
+
+function normalizeCalendarSlugSegment(raw: string): string {
+  try {
+    return decodeURIComponent(raw.trim());
+  } catch {
+    return raw.trim();
+  }
+}
+
+const SCHEDULE_QUERY_NO_RETRY_MESSAGES = new Set([
+  MSG_CALENDAR_NOT_FOUND,
+  MSG_ENTRY_LINK_NOT_FOUND,
+  MSG_SLUG_MISMATCH,
+]);
+
 /**
  * Día de la semana en formato corto (en inglés)
  */
@@ -35,6 +55,15 @@ interface CalendarResponse {
   id: string;
   clientId: string;
   calendarSlug: string;
+  /** Presente en GET /calendars/public/e/:token (metadatos del enlace fusionado). */
+  entryLink?: {
+    id?: string;
+    label?: string;
+    active?: boolean;
+    sortOrder?: number;
+    token?: string;
+    createdAt?: string;
+  };
   amount?: number | string;
   currency?: string | null;
   scheduling: {
@@ -311,7 +340,9 @@ export function useCalendarSchedule(): UseCalendarScheduleResult {
 
       if (!res.ok) {
         if (res.status === 404) {
-          throw new Error("Calendario no encontrado");
+          throw new Error(
+            entryLinkToken ? MSG_ENTRY_LINK_NOT_FOUND : MSG_CALENDAR_NOT_FOUND
+          );
         }
         const errorData = await res.json().catch(() => ({}));
         throw new Error(
@@ -321,15 +352,23 @@ export function useCalendarSchedule(): UseCalendarScheduleResult {
       }
 
       const data: CalendarResponse = await res.json();
+
+      if (entryLinkToken) {
+        const pathSlug = normalizeCalendarSlugSegment(calendarSlug);
+        const apiSlug = normalizeCalendarSlugSegment(data.calendarSlug);
+        if (pathSlug !== apiSlug) {
+          throw new Error(MSG_SLUG_MISMATCH);
+        }
+      }
+
       // Transformar la respuesta anidada a estructura plana
       return transformCalendarResponse(data);
     },
     enabled: !!calendarSlug,
     retry: (failureCount, error) => {
-      // No reintentar si es un error 404
       if (
         error instanceof Error &&
-        error.message === "Calendario no encontrado"
+        SCHEDULE_QUERY_NO_RETRY_MESSAGES.has(error.message)
       ) {
         return false;
       }
