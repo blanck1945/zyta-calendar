@@ -21,6 +21,7 @@ import { useTheme } from "./contexts/ThemeContext";
 import { useProfessionalId } from "./utils/useProfessionalId";
 import {
   useCalendarSchedule,
+  type CalendarSchedule,
   type DayOfWeek,
   type TimeRange,
 } from "./hooks/useCalendarSchedule";
@@ -42,6 +43,26 @@ import {
 } from "./utils/entryLink";
 
 // Fallback ligero para Suspense: evita layout shift y da feedback inmediato al cambiar de paso
+/** Monto para POST público cuando el BE exige pago antes de confirmar (CreateAppointmentDto). */
+function resolveAmountForPublicBooking(
+  schedule: CalendarSchedule
+):
+  | { ok: true; amount?: number }
+  | { ok: false; message: string } {
+  if (schedule.bookingSettings?.requirePaymentBeforeConfirmation !== true) {
+    return { ok: true, amount: undefined };
+  }
+  const amt = schedule.amount;
+  if (amt == null || !Number.isFinite(amt) || amt <= 0) {
+    return {
+      ok: false,
+      message:
+        "Este calendario requiere un importe válido para reservar. Contactá al profesional.",
+    };
+  }
+  return { ok: true, amount: amt };
+}
+
 const StepFallback = () => (
   <div
     className="animate-pulse rounded-lg bg-muted/50"
@@ -967,12 +988,29 @@ function App() {
 
   const reviewBeforePayment = schedule?.bookingSettings?.confirmCaseBeforePayment === true;
 
+  /** Si false, no mostrar KairoStepPayment: confirmar al vuelo (misma lógica que resolveAmountForPublicBooking). */
+  const needsPaymentStep = useMemo(
+    () =>
+      schedule?.bookingSettings?.requirePaymentBeforeConfirmation === true &&
+      schedule?.payments?.noPaymentRequired !== true,
+    [
+      schedule?.bookingSettings?.requirePaymentBeforeConfirmation,
+      schedule?.payments?.noPaymentRequired,
+    ]
+  );
+
   // Loading de confirmación (para flujo con revisión: paso 3 Enviar Zyta)
   const [isConfirmingReservation, setIsConfirmingReservation] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const handleSubmitReviewConfirmation = async () => {
     if (!meetingStart || !name || !email || !schedule?.calendarSlug) return;
+    const amountCheck = resolveAmountForPublicBooking(schedule);
+    if (!amountCheck.ok) {
+      setPaymentError(amountCheck.message);
+      return;
+    }
+    setPaymentError(null);
     setIsConfirmingReservation(true);
     try {
       const appointment = await createAppointmentMutation.mutateAsync({
@@ -985,6 +1023,7 @@ function App() {
         paymentMethod: "cash",
         notes: query || undefined,
         duration: selectedDuration || undefined,
+        ...(amountCheck.amount != null ? { amount: amountCheck.amount } : {}),
       });
 
       const formData = {
@@ -1020,6 +1059,9 @@ function App() {
       window.location.href = url;
     } catch (err) {
       console.error("Error al crear la cita:", err);
+      setPaymentError(
+        err instanceof Error ? err.message : "No se pudo enviar la consulta."
+      );
       setIsConfirmingReservation(false);
     }
   };
@@ -1027,6 +1069,11 @@ function App() {
   const handleContinueToPayment = async () => {
     if (reviewBeforePayment) {
       setStep(3);
+      return;
+    }
+    if (!needsPaymentStep) {
+      setPaymentMethod("cash");
+      await handleConfirmReservation("cash");
       return;
     }
     // Auto-seleccionar: MP > GalioPay > transfer > primero disponible
@@ -1106,6 +1153,12 @@ function App() {
       return;
     }
 
+    const amountCheck = resolveAmountForPublicBooking(schedule);
+    if (!amountCheck.ok) {
+      setPaymentError(amountCheck.message);
+      return;
+    }
+
     // Mostrar loading de inmediato (antes de cualquier async)
     setPaymentError(null);
     setIsConfirmingReservation(true);
@@ -1121,6 +1174,7 @@ function App() {
         paymentMethod: effectiveMethod,
         notes: query || undefined,
         duration: selectedDuration || undefined,
+        ...(amountCheck.amount != null ? { amount: amountCheck.amount } : {}),
       });
 
       console.log("Cita creada exitosamente:", appointment);
@@ -1578,6 +1632,7 @@ function App() {
                 isLoading={
                   isConfirmingReservation || createAppointmentMutation.isPending
                 }
+                error={paymentError}
               />
             </Suspense>
           )}
