@@ -1462,13 +1462,13 @@ function App() {
         <h1 className="sr-only">{stepTitles.title}</h1>
         <p className="sr-only">{stepTitles.subtitle}</p>
 
-        <main className="px-3 sm:px-4 md:px-8 pb-4 md:pb-8 pt-3 md:pt-4 flex-1 flex flex-col min-h-0">
+        <main className="px-3 sm:px-4 md:px-8 pb-4 md:pb-8 pt-2 md:pt-3 flex-1 flex flex-col min-h-0 items-center">
           <div 
-            className="w-full max-w-[90rem] mx-auto flex-1 min-h-0 bg-white rounded-2xl shadow-2xl overflow-x-hidden overflow-y-auto max-h-[92vh] md:max-h-[90vh] scroll-smooth custom-scrollbar"
+            className="w-full max-w-[90rem] mx-auto mt-4 md:mt-6 lg:mt-8 flex-1 min-h-0 bg-white rounded-2xl shadow-2xl overflow-x-hidden overflow-y-auto scroll-smooth custom-scrollbar"
             style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}
           >
             {/* Stepper + links: en mobile/tablet columna centrada (stepper arriba, links abajo); en desktop fila con links a la derecha */}
-            <div className="px-3 sm:px-4 md:px-8 py-4 md:py-5 border-b border-gray-100 flex flex-col items-center gap-4 lg:flex-row lg:justify-between lg:items-center" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>
+            <div className="px-3 sm:px-4 md:px-8 py-2.5 md:py-3 border-b border-gray-100 flex flex-col items-center gap-3 lg:flex-row lg:justify-between lg:items-center" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>
               {!isQuotaFull && (
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-3 lg:gap-x-6 lg:gap-y-0">
                 {stepperItems.map((item, idx) => (
@@ -1515,7 +1515,7 @@ function App() {
             </div>
 
             {/* Contenido principal */}
-            <div className="p-6 md:p-8">
+            <div className="px-4 py-4 md:px-6 md:py-5">
               <section>
           {isQuotaFull && schedule ? (
             <div className="text-center py-12 px-4 max-w-lg mx-auto">

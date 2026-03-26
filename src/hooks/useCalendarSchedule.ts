@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCalendarSlug } from "../utils/useCalendarSlug";
 import { useEntryLinkToken } from "../utils/entryLink";
+import {
+  buildMockCalendarSchedule,
+  isDevMockCalendarEnabled,
+} from "../dev/mockCalendarSchedule";
 
 const MSG_CALENDAR_NOT_FOUND = "Calendario no encontrado";
 const MSG_ENTRY_LINK_NOT_FOUND =
@@ -314,6 +318,12 @@ export function useCalendarSchedule(): UseCalendarScheduleResult {
     queryFn: async (): Promise<CalendarSchedule> => {
       if (!calendarSlug) {
         throw new Error("No se especificó el calendario");
+      }
+
+      if (isDevMockCalendarEnabled() && !entryLinkToken) {
+        return buildMockCalendarSchedule(
+          calendarSlug
+        ) as CalendarSchedule;
       }
 
       // Verificar que la URL del backend esté configurada

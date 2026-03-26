@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { isDevMockCalendarEnabled } from "../dev/mockCalendarSchedule";
 
 export interface CreateAppointmentRequest {
   calendarSlug: string;
@@ -38,14 +39,38 @@ export function useCreateAppointment() {
     mutationFn: async (
       data: CreateAppointmentRequest
     ): Promise<CreateAppointmentResponse> => {
+      if (!data.calendarSlug) {
+        throw new Error("calendarSlug es requerido");
+      }
+
+      if (isDevMockCalendarEnabled() && !data.entryLinkToken) {
+        await new Promise((r) => setTimeout(r, 350));
+        const id = `mock-${Date.now()}`;
+        const start = new Date(data.startTime);
+        const end = new Date(start);
+        end.setMinutes(
+          end.getMinutes() + (data.duration && data.duration > 0 ? data.duration : 30)
+        );
+        return {
+          id,
+          calendarId: "mock-calendar-id",
+          clientName: data.clientName,
+          clientEmail: data.clientEmail,
+          clientPhone: data.clientPhone,
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+          status: "confirmed",
+          paymentMethod: data.paymentMethod,
+          notes: data.notes,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+
       const backendUrl = import.meta.env.VITE_BACKEND_URL?.replace(/\/+$/, "") || "";
 
       if (!backendUrl) {
         throw new Error("VITE_BACKEND_URL no está configurada");
-      }
-
-      if (!data.calendarSlug) {
-        throw new Error("calendarSlug es requerido");
       }
 
       const path = data.entryLinkToken
