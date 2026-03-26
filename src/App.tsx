@@ -1469,8 +1469,9 @@ function App() {
             >
               {stepTitles.title}
             </h1>
-            <p 
-              className="text-gray-400 text-base md:text-lg max-w-2xl"
+            {/* Subtítulo oculto: gana altura en pantallas bajas; el contenido útil queda más arriba */}
+            <p
+              className="hidden text-gray-400 text-base md:text-lg max-w-2xl"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
               {stepTitles.subtitle}
@@ -1597,8 +1598,7 @@ function App() {
                   selectedDuration={selectedDuration}
                   onSelectDuration={setStoreSelectedDuration}
                   reviewBeforePayment={reviewBeforePayment}
-                  timezone={schedule.timezone}
-                  modalityLabel="videollamada (link al confirmar)"
+                  needsPaymentStep={needsPaymentStep}
                   amount={schedule.amount}
                   currency={schedule.currency}
                 />

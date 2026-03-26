@@ -740,14 +740,6 @@ const KairoStepForm: React.FC<KairoStepFormProps> = ({
             )}
           </Button>
         </div>
-
-        {/* Microcopy legal único debajo del CTA (versión final paso 2) */}
-        <p
-          className="text-xs text-gray-500 mt-1"
-          style={{ fontFamily: "Inter, sans-serif" }}
-        >
-          Zyta es una plataforma de agenda y cobros. La consulta es brindada exclusivamente por el profesional.
-        </p>
       </form>
     </>
   );
